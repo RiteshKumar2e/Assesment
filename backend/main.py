@@ -1,9 +1,13 @@
 import json
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from .agents import GeneratorAgent, ValidatorAgent
+try:
+    from .agents import GeneratorAgent, ValidatorAgent
+except ImportError:
+    from agents import GeneratorAgent, ValidatorAgent
 
 app = FastAPI(title="Guided Component Architect API")
 
@@ -14,7 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-with open("design-system.json", "r") as f:
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+design_system_path = os.path.join(BASE_DIR, "design-system.json")
+
+with open(design_system_path, "r") as f:
     design_system = json.load(f)
 
 generator = GeneratorAgent(design_system)
