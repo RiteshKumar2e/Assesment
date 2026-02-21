@@ -48,7 +48,7 @@ async def generate_component(request: GenerationRequest):
         phase = "Initial Generation" if i == 0 else f"Self-Correction Loop (Attempt {i})"
         logs.append(f"ANALYSIS: {phase}: Analyzing design system and constructing architecture...")
         
-        current_code = generator.generate(request.prompt, request.prev_code or current_code, errors)
+        current_code = await generator.generate(request.prompt, request.prev_code or current_code, errors)
         
         logs.append(f"VALIDATION: Linter-Agent scanning for design system violations...")
         validation_result = validator.validate(current_code)

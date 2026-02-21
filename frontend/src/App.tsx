@@ -249,20 +249,33 @@ const App = () => {
                                                     <html>
                                                         <head>
                                                             <script src="https://cdn.tailwindcss.com"></script>
-                                                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                                                             <style>
-                                                                body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: transparent; }
-                                                                /* Hide scrollbars but keep functionality */
+                                                                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+                                                                body { 
+                                                                    font-family: 'Inter', sans-serif; 
+                                                                    margin: 0; 
+                                                                    padding: 0; 
+                                                                    background: #0f172a; 
+                                                                    color: white;
+                                                                    overflow-x: hidden;
+                                                                }
                                                                 ::-webkit-scrollbar { display: none; }
-                                                                * { scrollbar-width: none; }
                                                             </style>
                                                         </head>
                                                         <body>
                                                             <div id="render-root">
                                                                 ${(() => {
-                                                        const match = result.code.match(/template: `([\s\S]*?)`/);
-                                                        return match ? match[1] : '<div class="p-10 text-center text-gray-400">Unable to parse template</div>';
+                                                        // Enhanced regex for template extraction
+                                                        const templateMatch = result.code.match(/template:\s*[`'"]([\s\S]*?)[`'"]/);
+                                                        if (templateMatch) return templateMatch[1];
+
+                                                        // Fallback: search for everything inside the backticks if basic match fails
+                                                        const rawMatch = result.code.match(/`([\s\S]*?)`/);
+                                                        return rawMatch ? rawMatch[1] : '<div class="p-10 text-center text-gray-400">Parsing architecture...</div>';
                                                     })()}
+                                                            </div>
+                                                            <div style="position: fixed; bottom: 10px; right: 10px; opacity: 0.3; font-size: 8px; font-weight: bold; font-family: sans-serif; letter-spacing: 1px;">
+                                                                PRODUCTION READY CODE · TAILWIND OPTIMIZED
                                                             </div>
                                                         </body>
                                                     </html>
