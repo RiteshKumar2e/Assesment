@@ -1,37 +1,150 @@
 {
+    "name": "Architect Design System",
+    "version": "2.0.0",
+    "description": "Production-grade design tokens for Guided Component Architect. All generated components must strictly use these values.",
+
     "tokens": {
         "colors": {
             "primary": "#6366f1",
+            "primaryHover": "#4f46e5",
+            "primaryLight": "rgba(99, 102, 241, 0.15)",
             "secondary": "#a855f7",
+            "secondaryLight": "rgba(168, 85, 247, 0.15)",
+            "accent": "#06b6d4",
+            "accentLight": "rgba(6, 182, 212, 0.15)",
+            "success": "#22c55e",
+            "warning": "#f59e0b",
+            "danger": "#ef4444",
             "background": "#0f172a",
-            "surface": "rgba(30, 41, 59, 0.7)",
+            "backgroundMid": "#1e293b",
+            "surface": "rgba(30, 41, 59, 0.8)",
+            "surfaceHover": "rgba(51, 65, 85, 0.8)",
+            "border": "rgba(255, 255, 255, 0.08)",
+            "borderStrong": "rgba(255, 255, 255, 0.18)",
             "text": "#f8fafc",
-            "accent": "#f43f5e"
+            "textMuted": "rgba(248, 250, 252, 0.5)",
+            "textSubtle": "rgba(248, 250, 252, 0.25)"
         },
+
         "spacing": {
-            "xs": "4px",
-            "sm": "8px",
-            "md": "16px",
-            "lg": "24px",
-            "xl": "32px"
+            "1": "4px",
+            "2": "8px",
+            "3": "12px",
+            "4": "16px",
+            "5": "20px",
+            "6": "24px",
+            "8": "32px",
+            "10": "40px",
+            "12": "48px",
+            "16": "64px",
+            "20": "80px",
+            "24": "96px"
         },
+
         "borderRadius": {
-            "small": "4px",
-            "medium": "8px",
-            "large": "16px",
+            "sm": "6px",
+            "md": "12px",
+            "lg": "20px",
+            "xl": "28px",
+            "2xl": "40px",
             "full": "9999px"
         },
+
         "typography": {
             "fontFamily": "'Inter', ui-sans-serif, system-ui, sans-serif",
+            "fontFamilyMono": "'JetBrains Mono', 'Fira Code', ui-monospace, monospace",
             "fontSize": {
-                "base": "16px",
-                "title": "24px",
-                "small": "12px"
+                "xs": "11px",
+                "sm": "13px",
+                "base": "15px",
+                "md": "17px",
+                "lg": "20px",
+                "xl": "24px",
+                "2xl": "30px",
+                "3xl": "38px",
+                "4xl": "48px",
+                "5xl": "64px"
+            },
+            "fontWeight": {
+                "normal": "400",
+                "medium": "500",
+                "semibold": "600",
+                "bold": "700",
+                "black": "900"
+            },
+            "lineHeight": {
+                "tight": "1.1",
+                "snug": "1.35",
+                "normal": "1.6",
+                "relaxed": "1.8"
+            },
+            "letterSpacing": {
+                "tight": "-0.03em",
+                "normal": "0",
+                "wide": "0.08em",
+                "widest": "0.2em"
             }
         },
+
         "effects": {
-            "glassmorphism": "backdrop-filter: blur(12px) saturate(180%); background-color: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.125);",
-            "shadow": "0 8px 32px 0 rgba(0, 0, 0, 0.37)"
+            "glassmorphism": "backdrop-filter: blur(20px) saturate(180%); background-color: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.08);",
+            "glassmorphismStrong": "backdrop-filter: blur(40px) saturate(200%); background-color: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255, 255, 255, 0.12);",
+            "glow": "box-shadow: 0 0 40px rgba(99, 102, 241, 0.35);",
+            "glowAccent": "box-shadow: 0 0 40px rgba(6, 182, 212, 0.35);"
+        },
+
+        "shadows": {
+            "sm": "0 2px 8px rgba(0, 0, 0, 0.25)",
+            "md": "0 8px 24px rgba(0, 0, 0, 0.35)",
+            "lg": "0 20px 60px rgba(0, 0, 0, 0.5)",
+            "xl": "0 32px 80px rgba(0, 0, 0, 0.6)",
+            "primary": "0 8px 32px rgba(99, 102, 241, 0.4)",
+            "accent": "0 8px 32px rgba(6, 182, 212, 0.4)"
+        },
+
+        "animation": {
+            "durationFast": "150ms",
+            "durationNormal": "300ms",
+            "durationSlow": "600ms",
+            "easingDefault": "cubic-bezier(0.4, 0, 0.2, 1)",
+            "easingSpring": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+            "easingOut": "cubic-bezier(0, 0, 0.2, 1)"
+        },
+
+        "components": {
+            "button": {
+                "paddingX": "24px",
+                "paddingY": "14px",
+                "borderRadius": "12px",
+                "fontWeight": "700",
+                "fontSize": "13px",
+                "letterSpacing": "0.06em"
+            },
+            "input": {
+                "paddingX": "16px",
+                "paddingY": "14px",
+                "borderRadius": "12px",
+                "background": "rgba(255, 255, 255, 0.05)",
+                "border": "1px solid rgba(255, 255, 255, 0.08)",
+                "fontSize": "15px"
+            },
+            "card": {
+                "padding": "32px",
+                "borderRadius": "24px",
+                "background": "rgba(30, 41, 59, 0.7)",
+                "border": "1px solid rgba(255, 255, 255, 0.08)",
+                "shadow": "0 20px 60px rgba(0, 0, 0, 0.4)"
+            }
         }
-    }
+    },
+
+    "rules": [
+        "All color values used in components must match a token from tokens.colors",
+        "Do not use hardcoded hex values outside of the token palette",
+        "All components must use tokens.typography.fontFamily",
+        "Spacing must follow the tokens.spacing scale",
+        "Animations must use durations and easings from tokens.animation",
+        "Every component must be Angular standalone: true",
+        "Use Tailwind CSS utility classes for all layout and styling"
+    ]
 }
