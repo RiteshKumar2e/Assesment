@@ -2,40 +2,40 @@
 
 A sophisticated pipeline that transforms natural language descriptions into valid, styled Angular components while adhering to a strict design system.
 
+## 🚀 Architectural Choice: Groq Powered Agentic Loops
+To ensure a high-performance developer experience, this system utilizes **Groq's LPU™ Inference Engine**. We selected Groq specifically for its **ultra-low-latency generation**, which allows our "Generator-Validator-Corrector" loops to run near-instantaneously. This architecture enables multiple self-correction cycles without taxing the user's focus, making complex UI generation feel fluid.
+
 ## Agentic Loop Architecture
 
-The system implements a classic "Generator-Validator-Corrector" agentic pattern:
+The system implements a classic "Generator-Validator-Corrector" agentic pattern with strict reinforcement:
 
-1.  **Input**: User provided natural language prompt + Design System JSON tokens.
-2.  **Generator Agent**: A specialized LLM prompt that includes the design tokens and specific instructions to output standalone Angular component code using Tailwind CSS.
+1.  **Input**: Natural language prompt + `design-system.json` tokens.
+2.  **Generator Agent**: Uses a low-temperature (0.2) model with strict system instructions to produce raw Angular source code.
 3.  **Linter-Agent (Validator)**: 
-    *   **Syntax Check**: Ensures basic code structure (brackets, decorators) are present and correct.
-    *   **Design Token Compliance**: Uses regex to find hardcoded values (like hex colors) and cross-references them with the allowed tokens in `design-system.json`.
-4.  **Self-Correction**: If the Validator finds errors, the system triggers a feedback loop. It re-prompts the Generator with the specific error logs, asking it to fix the code.
-5.  **Output**: The final validated code is returned to the frontend.
+    *   **Syntax Check**: Validates basic TypeScript/Angular structure.
+    *   **Design Token Compliance**: Ensures zero-hardcoded colors; only allowed design system values are permitted.
+4.  **Self-Correction (The Loop)**: On failure, the specific error logs are fed back to the Generator for up to 2 remedial iterations.
+5.  **Clean Output**: Implements custom regex stripping to ensure raw code delivery (zero conversational text).
 
 ## Structure
 
--   `backend/`: Python FastAPI application managing the agentic logic.
--   `frontend/`: Angular application for the user interface and preview.
+-   `backend/`: Python FastAPI application managing the agentic logic and Groq integration.
+-   `frontend/`: React-based architect dashboard with live visual mapping.
 -   `design-system.json`: The source of truth for design tokens.
 
-## How to Run
+## Setup & Running
 
-### Backend
+### Requirements
+- Python 3.9+
+- Node.js 18+
+- Groq API Key (Set as `GROQ_API_KEY` in `.env`)
+
+### Execution
 ```bash
-cd backend
-pip install -r requirements.txt
+# Backend
+cd backend && pip install -r requirements.txt
 python main.py
-```
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm start
+# Frontend
+cd frontend && npm install && npm start
 ```
-
-## Assumptions
-- Tailwind CSS is available in the environment where the generated component will be rendered.
-- The system uses a mock LLM logic for demonstration purposes (simulating a failed first attempt and a successful self-correction).

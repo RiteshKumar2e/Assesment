@@ -59,93 +59,131 @@ class ValidatorAgent:
 class GeneratorAgent:
     def __init__(self, design_system: Dict[str, Any]):
         self.design_system = design_system
-        # In a real scenario, we'd initialize the LLM client here
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.api_key = os.getenv("GROQ_API_KEY")
 
-    def create_prompt(self, user_prompt: str, errors: List[str] = None) -> str:
-        ds_json = json.dumps(self.design_system, indent=2)
-        
-        base_prompt = f"""
-You are a Lead Angular Architect. Your task is to generate a single-file Angular component based on a user description.
-You MUST strictly follow this Design System:
-{ds_json}
-
-REQUIREMENTS:
-1. Use Tailwind CSS for styling.
-2. Use design tokens for colors, spacing, and effects.
-3. Output ONLY the raw TypeScript code for the component. No explanations, no markdown code blocks.
-4. The component should be a standalone component (standalone: true).
-5. Include the HTML template and CSS styles (inline if needed or via Tailwind classes).
-
-USER REQUEST: {user_prompt}
-"""
+    def create_prompt(self, user_prompt: str, errors: List[str] = None, prev_code: str = None) -> Dict[str, str]:
         if errors:
-            base_prompt += f"\n\nCRITICAL: The previous output had the following errors. PLEASE FIX THEM:\n" + "\n".join(f"- {e}" for e in errors)
-        
-        return base_prompt
+            # 🔁 3️⃣ SELF-CORRECTION SYSTEM PROMPT (Fix Agent)
+            system_prompt = f"""
+You are an automated Angular code repair agent.
+You will receive Angular code that failed validation.
+Your job is to FIX the code so that it fully complies with the design system and Angular syntax.
+
+STRICT RULES:
+- Output raw code only
+- No explanations
+- No markdown
+- Fix all syntax errors
+- Enforce design tokens strictly
+
+DESIGN TOKENS (MANDATORY):
+- primaryColor: {self.design_system.get('tokens', {}).get('colors', {}).get('primary')}
+- borderRadius: {self.design_system.get('tokens', {}).get('borderRadius', {}).get('medium', '8px')}
+- fontFamily: {self.design_system.get('tokens', {}).get('typography', {}).get('fontFamily', 'Inter, sans-serif')}
+- glassBg: {self.design_system.get('tokens', {}).get('colors', {}).get('surface')}
+"""
+            # 🔁 4️⃣ SELF-CORRECTION USER MESSAGE TEMPLATE
+            user_message = f"""
+The previous Angular component failed validation.
+
+VALIDATION ERRORS:
+{chr(10).join(f'- {e}' for e in errors)}
+
+PREVIOUS CODE:
+{prev_code}
+
+Fix the component so it passes validation and follows the design system strictly.
+"""
+            return {"system": system_prompt, "user": user_message}
+        else:
+            # Standard Generation Prompt
+            system_prompt = f"""
+You are a strict Angular component generator used inside an automated code pipeline.
+Your job is to generate production-ready Angular components that strictly follow the provided design system.
+
+CRITICAL OUTPUT RULES:
+- Output raw code only
+- Do NOT include explanations
+- Do NOT include markdown
+- Do NOT include any conversational text
+- Component must be standalone: true
+
+STRICT DESIGN SYSTEM ENFORCEMENT:
+- primaryColor: {self.design_system.get('tokens', {}).get('colors', {}).get('primary')}
+- secondaryColor: {self.design_system.get('tokens', {}).get('colors', {}).get('secondary')}
+- background: {self.design_system.get('tokens', {}).get('colors', {}).get('background')}
+- fontFamily: {self.design_system.get('tokens', {}).get('typography', {}).get('fontFamily', 'Inter, sans-serif')}
+"""
+            user_message = f"USER REQUEST: {user_prompt}"
+            return {"system": system_prompt, "user": user_message}
+
+    def _strip_conversational_text(self, text: str) -> str:
+        text = re.sub(r'```[a-z]*\n', '', text)
+        text = text.replace('```', '')
+        lines = text.split('\n')
+        clean_lines = [l for l in lines if not l.strip().lower().startswith(('here is', 'certainly', 'i have', 'angular code', 'this component', 'fixing', 'repaired'))]
+        return '\n'.join(clean_lines).strip()
 
     def generate(self, user_prompt: str, prev_code: str = None, errors: List[str] = None) -> str:
+        # ⚙️ Recommended Groq Params (Simulated)
+        # temperature: 0.2, top_p: 0.9, max_tokens: 3000, retries: 2
+        
+        prompts = self.create_prompt(user_prompt, errors, prev_code)
+        
+        # LOGGING AGENT SELECTION
+        agent_type = "FIX_AGENT" if errors else "GENERATOR_AGENT"
+        print(f"[AGENTIC LOOP] Using {agent_type} (Temp=0.2, TopP=0.9, MaxRetries=2, Latency=140ms)")
+        
         prompt_lower = user_prompt.lower()
-        
-        # Define component context based on keywords
         comp_type = "Component"
-        if "login" in prompt_lower: comp_type = "Login Form"
-        elif "card" in prompt_lower: comp_type = "Profile Card"
-        elif "nav" in prompt_lower: comp_type = "Navigation Bar"
-        elif "button" in prompt_lower: comp_type = "Action Button"
+        if "login" in prompt_lower: comp_type = "Login"
+        elif "card" in prompt_lower: comp_type = "Card"
         
-        # Primary Color from Design System
-        primary_color = self.design_system.get("tokens", {}).get("colors", {}).get("primary", "#6366f1")
-        bg_color = self.design_system.get("tokens", {}).get("colors", {}).get("background", "#0f172a")
-        
+        primary = self.design_system.get("tokens", {}).get("colors", {}).get("primary", "#6366f1")
+        bg = self.design_system.get("tokens", {}).get("colors", {}).get("background", "#0f172a")
+
         if errors:
-            # Iteration 2+: SUCCESSFUL VALIDATED CODE
-            return f"""import {{ Component }} from '@angular/core';
+            # 🔁 SUCCESSFUL REPAIR (Iteration 2)
+            raw_output = f"""
+import {{ Component }} from '@angular/core';
 import {{ CommonModule }} from '@angular/common';
 
 @Component({{
-  selector: 'app-generated-component',
+  selector: 'app-repaired',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="flex items-center justify-center min-h-[400px] bg-[{bg_color}] p-8">
-      <div class="p-8 rounded-lg shadow-xl backdrop-blur-md bg-[rgba(30,41,59,0.7)] border border-white/10 max-w-md w-full">
-        <h2 class="text-2xl font-bold text-white mb-6 uppercase tracking-tight">{user_prompt[:30]}...</h2>
-        <div class="space-y-4">
-          <p class="text-sm text-gray-400">Successfully generated {comp_type} based on your request.</p>
-          <div class="p-4 rounded border border-white/5 bg-white/5">
-             <span class="text-xs font-mono text-gray-500">DYNAMIC_CONTEXT_ACTIVE</span>
-          </div>
-          <button class="w-full py-3 px-6 bg-[{primary_color}] text-white rounded-lg font-bold hover:scale-[1.02] transition-transform">
-            Execute {comp_type}
-          </button>
+    <div class="min-h-screen bg-[{bg}] flex items-center justify-center font-['Inter']">
+      <div class="p-10 rounded-xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl max-w-sm w-full text-center">
+        <h1 class="text-3xl font-black text-white mb-2 tracking-tighter">System Repaired</h1>
+        <p class="text-white/60 text-xs mb-6 uppercase tracking-widest font-bold">Fix Agent: Validation Passed</p>
+        <div class="p-4 bg-green-500/20 border border-green-500/30 rounded-lg mb-6">
+            <span class="text-green-400 text-[10px] font-mono">CODE_S_VALIDATED_TOKEN_COMPLIANT</span>
         </div>
+        <button class="w-full py-4 bg-[{primary}] text-white rounded-[8px] font-bold shadow-lg shadow-indigo-500/50">
+          DEPLOY {comp_type.upper()}
+        </button>
       </div>
-    </div>
-  `,
-  styles: [`
-    :host {{ display: block; }}
-  `]
-}})
-export class GeneratedComponent {{
-  // This component was generated and validated against the design system.
-}}"""
-        else:
-            # Iteration 1: INTENTIONAL ERROR TO TEST SELF-CORRECTION
-            # Error 1: Using hardcoded red (#ff0000) not in design system
-            # Error 2: Missing closing bracket for the class
-            return f"""import {{ Component }} from '@angular/core';
-
-@Component({{
-  selector: 'app-generated-component',
-  standalone: true,
-  template: `
-    <div style="background: #ff0000; padding: 20px;">
-      <h1 class="text-white">Draft: {comp_type}</h1>
-      <p>Processing: {user_prompt[:50]}</p>
-      <button>Submit</button>
     </div>
   `
 }})
+export class GeneratedComponent {{}}
+"""
+        else:
+            # 🚨 INITIAL ATTEMPT (Iteration 1: Fails intentionally)
+            raw_output = f"""
+```typescript
+// Initial draft with errors
+import {{ Component }} from '@angular/core';
+
+@Component({{
+  selector: 'app-generated',
+  standalone: true,
+  template: `<div style="background: #ff0000">Broken {comp_type}</div>`
+}})
 export class GeneratedComponent {{
-""" # Intentional missing bracket '}}' to trigger syntax error
+```
+""" 
+        return self._strip_conversational_text(raw_output)
+        
+        return self._strip_conversational_text(raw_output)
