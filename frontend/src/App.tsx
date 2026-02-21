@@ -5,12 +5,14 @@ interface GenerationResult {
     iterations: number;
     logs: string[];
     success: boolean;
+    prompt?: string;
 }
 
 const App = () => {
     const [prompt, setPrompt] = useState<string>('');
     const [result, setResult] = useState<GenerationResult | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
+    const [history, setHistory] = useState<GenerationResult[]>([]);
 
     const [activeTab, setActiveTab] = useState<'code' | 'logs'>('code');
 
@@ -27,7 +29,9 @@ const App = () => {
                 }),
             });
             const data: GenerationResult = await response.json();
-            setResult(data);
+            const resultWithPrompt = { ...data, prompt };
+            setResult(resultWithPrompt);
+            setHistory(prev => [resultWithPrompt, ...prev].slice(0, 5)); // Keep last 5
             setPrompt(''); // Clear prompt after send
             setActiveTab('code'); // Switch back to code after success
         } catch (error) {
@@ -35,6 +39,13 @@ const App = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleClear = () => {
+        setPrompt('');
+        setResult(null);
+        setHistory([]);
+        setActiveTab('code');
     };
 
     const handleExport = () => {
@@ -62,6 +73,14 @@ const App = () => {
                         <h1 className="text-lg font-bold tracking-tight text-gray-900">Component Architect</h1>
                     </div>
                     <div className="flex items-center gap-5">
+                        {result && (
+                            <button
+                                onClick={handleClear}
+                                className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors uppercase tracking-widest px-3 py-1 border border-red-100 rounded-full hover:bg-red-50"
+                            >
+                                Clear Session
+                            </button>
+                        )}
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
                             <div className="w-2 h-2 rounded-full bg-green-500"></div>
                             <span>Connected</span>
@@ -76,10 +95,10 @@ const App = () => {
                     <div className="lg:col-span-5 space-y-8">
                         <div className="space-y-3">
                             <h2 className="text-4xl font-extrabold tracking-tight text-gray-900">
-                                {result ? "Refine your component." : "Build your ideas in Angular."}
+                                {result ? "Refine component." : "Build your ideas."}
                             </h2>
-                            <p className="text-lg text-gray-600 leading-relaxed max-w-md">
-                                {result ? "Ask for changes like 'add a rounded border' or 'change colors to indigo'." : "Describe the component you need. Our system will generate it based on your design rules."}
+                            <p className="text-lg text-gray-600 leading-relaxed max-w-sm">
+                                {result ? "Request a change or adjustment to the current version." : "Describe the component you need. Our system will follow your design rules."}
                             </p>
                         </div>
 
@@ -89,7 +108,7 @@ const App = () => {
                                     value={prompt}
                                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
                                     placeholder={result ? "e.g., Now make the button fully rounded..." : "e.g., A clean login form with email and password fields..."}
-                                    className="w-full h-48 bg-transparent border-none focus:ring-0 text-gray-800 placeholder:text-gray-400 resize-none text-base leading-relaxed"
+                                    className="w-full h-40 bg-transparent border-none focus:ring-0 text-gray-800 placeholder:text-gray-400 resize-none text-base leading-relaxed"
                                 />
                             </div>
                             <div className="bg-gray-50 p-3 flex justify-end border-t border-gray-100">
@@ -103,23 +122,44 @@ const App = () => {
                                             <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                             {result ? 'Updating...' : 'Generating...'}
                                         </>
-                                    ) : (result ? 'Update Component' : 'Create Component')}
+                                    ) : (result ? 'Apply Change' : 'Create Component')}
                                 </button>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Retries</p>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Self-Corrections</p>
                                 <p className="text-2xl font-bold text-gray-900">{result?.iterations || 0}</p>
                             </div>
                             <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
                                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
                                 <p className={`text-xl font-bold ${result?.success ? 'text-green-600' : (result ? 'text-amber-600' : 'text-gray-900')}`}>
-                                    {result ? (result.success ? 'Verified' : 'Refining...') : 'Standby'}
+                                    {result ? (result.success ? 'Verified' : 'Refining...') : 'Ready'}
                                 </p>
                             </div>
                         </div>
+
+                        {history.length > 0 && (
+                            <div className="space-y-4 pt-4 border-t border-gray-100">
+                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Session History</h3>
+                                <div className="space-y-2">
+                                    {history.map((h, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => { setResult(h); setActiveTab('code'); }}
+                                            className={`w-full text-left p-3 rounded-lg border transition-all flex items-center justify-between group ${result === h ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100 hover:border-gray-300'}`}
+                                        >
+                                            <div className="flex items-center gap-3 w-full overflow-hidden">
+                                                <div className={`w-2 h-2 shrink-0 rounded-full ${h.success ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                                                <span className="text-sm font-medium text-gray-700 truncate flex-1">{h.prompt || "Generated Component"}</span>
+                                            </div>
+                                            <span className="text-[10px] text-gray-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity">RESTORE</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right Column: Viewer (7 columns) */}
