@@ -35,15 +35,11 @@ class ValidatorAgent:
 
     def check_token_compliance(self, code: str) -> List[str]:
         errors = []
-        # Extract hex colors from code
         hex_colors = re.findall(r'#[0-9a-fA-F]{3,6}', code)
-        
         allowed_colors = [c.lower() for c in self.design_system.get("tokens", {}).get("colors", {}).values() if isinstance(c, str) and c.startswith("#")]
-        
         for color in hex_colors:
             if color.lower() not in allowed_colors:
                 errors.append(f"Hardcoded color '{color}' found. Please use tokens from the design system: {allowed_colors}")
-        
         return errors
 
     def validate(self, code: str) -> Dict[str, Any]:
@@ -125,12 +121,7 @@ STRICT DESIGN SYSTEM ENFORCEMENT:
         return '\n'.join(clean_lines).strip()
 
     def generate(self, user_prompt: str, prev_code: str = None, errors: List[str] = None) -> str:
-        # ⚙️ Recommended Groq Params (Simulated)
-        # temperature: 0.2, top_p: 0.9, max_tokens: 3000, retries: 2
-        
         prompts = self.create_prompt(user_prompt, errors, prev_code)
-        
-        # LOGGING AGENT SELECTION
         agent_type = "FIX_AGENT" if errors else "GENERATOR_AGENT"
         print(f"[AGENTIC LOOP] Using {agent_type} (Temp=0.2, TopP=0.9, MaxRetries=2, Latency=140ms)")
         

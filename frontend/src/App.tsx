@@ -18,22 +18,22 @@ const App = () => {
 
     const handleGenerate = async () => {
         setLoading(true);
-        setActiveTab('logs'); // Switch to logs view when starting generation
+        setActiveTab('logs');
         try {
             const response = await fetch('http://localhost:8080/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt,
-                    prev_code: result?.code // Pass existing code for multi-turn editing
+                    prev_code: result?.code
                 }),
             });
             const data: GenerationResult = await response.json();
             const resultWithPrompt = { ...data, prompt };
             setResult(resultWithPrompt);
-            setHistory(prev => [resultWithPrompt, ...prev].slice(0, 5)); // Keep last 5
-            setPrompt(''); // Clear prompt after send
-            setActiveTab('code'); // Switch back to code after success
+            setHistory(prev => [resultWithPrompt, ...prev].slice(0, 5));
+            setPrompt('');
+            setActiveTab('code');
         } catch (error) {
             console.error('Error:', error);
         } finally {
@@ -63,7 +63,6 @@ const App = () => {
 
     return (
         <div className="min-h-screen bg-[#fcfcfd] text-[#1a1c1e] font-sans selection:bg-[#4f46e5]/10">
-            {/* Header */}
             <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -91,7 +90,6 @@ const App = () => {
 
             <main className="max-w-6xl mx-auto px-6 py-12">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    {/* Left Column: Input (5 columns) */}
                     <div className="lg:col-span-5 space-y-8">
                         <div className="space-y-3">
                             <h2 className="text-4xl font-extrabold tracking-tight text-gray-900">
@@ -162,7 +160,6 @@ const App = () => {
                         )}
                     </div>
 
-                    {/* Right Column: Viewer (7 columns) */}
                     <div className="lg:col-span-7 space-y-6">
                         <div className="flex items-center justify-between border-b border-gray-200">
                             <div className="flex items-center gap-6">
@@ -246,7 +243,6 @@ const App = () => {
                                     <div className="h-full flex flex-col items-center justify-center p-6 bg-white overflow-auto scrollbar-hide">
                                         {result ? (
                                             <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
-                                                {/* Dynamic Component Header */}
                                                 <div className="mb-6 text-center">
                                                     <div className="inline-flex items-center gap-2 px-2 py-1 rounded bg-green-50 text-green-600 text-[9px] font-bold uppercase tracking-tighter mb-2 border border-green-100">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
