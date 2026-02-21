@@ -8,28 +8,26 @@ interface GenerationResult {
     prompt?: string;
 }
 
-// Extracts the HTML body from an Angular @Component template string
-const getTemplateContent = (code: string): string | null => {
-    // Find 'template:' then capture everything between the next pair of backticks
-    // We must split on 'template:' then find the backtick-delimited block
-    const afterKeyword = code.split(/template\s*:/)[1];
-    if (!afterKeyword) return null;
+// ─── Preview Engine ───────────────────────────────────────────────────────────
 
-    const stripped = afterKeyword.trimStart();
-    if (stripped[0] === '`') {
-        // Find the closing backtick — skip escaped backticks (\`)
+const getTemplateContent = (code: string): string | null => {
+    const parts = code.split(/template\s*:/);
+    if (parts.length < 2) return null;
+    const after = parts[1].trimStart();
+
+    if (after[0] === '`') {
         let i = 1;
-        while (i < stripped.length) {
-            if (stripped[i] === '\\') { i += 2; continue; }   // skip escaped
-            if (stripped[i] === '`') break;
+        while (i < after.length) {
+            if (after[i] === '\\') { i += 2; continue; }
+            if (after[i] === '`') break;
             i++;
         }
-        return stripped.slice(1, i);
+        return after.slice(1, i);
     }
-    if (stripped[0] === '"' || stripped[0] === "'") {
-        const q = stripped[0];
-        const end = stripped.indexOf(q, 1);
-        return end !== -1 ? stripped.slice(1, end) : null;
+    if (after[0] === '"' || after[0] === "'") {
+        const q = after[0];
+        const end = after.indexOf(q, 1);
+        return end !== -1 ? after.slice(1, end) : null;
     }
     return null;
 };
@@ -37,19 +35,12 @@ const getTemplateContent = (code: string): string | null => {
 const getPreviewHTML = (code: string): string => {
     const extracted = getTemplateContent(code);
     if (extracted?.trim()) return extracted;
-
-    // Fallback: if it looks like raw HTML already
-    if (code.includes('<div') || code.includes('<section') || code.includes('<main')) {
-        const htmlStart = code.indexOf('<');
-        if (htmlStart !== -1) return code.slice(htmlStart);
+    if (code.includes('<div') || code.includes('<section')) {
+        const s = code.indexOf('<');
+        if (s !== -1) return code.slice(s);
     }
-
-    return '<div style="padding:60px;text-align:center;color:rgba(255,255,255,0.3);font-family:sans-serif;font-size:13px;letter-spacing:0.1em;">PREVIEW RENDERING...</div>';
+    return `<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#94a3b8;font-family:sans-serif;font-size:13px;letter-spacing:0.08em;">PREVIEW RENDERING...</div>`;
 };
-
-// Inline Tailwind CDN via play.tailwindcss.com script — avoids the production CDN warning
-// while still enabling all utility classes inside the sandboxed preview iframe.
-const TAILWIND_PLAY_URL = 'https://cdn.tailwindcss.com';
 
 const buildSrcDoc = (code: string): string => {
     const body = getPreviewHTML(code);
@@ -57,179 +48,216 @@ const buildSrcDoc = (code: string): string => {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>/* Tailwind CSS v3 Play CDN — preview only */</script>
-<script src="${TAILWIND_PLAY_URL}"><\/script>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://cdn.tailwindcss.com"><\/script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&display=swap');
-  *, *::before, *::after { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0;
-    min-height: 100vh;
-    background: #0f172a;
-    color: #f8fafc;
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  ::-webkit-scrollbar { display: none; }
-  * { scrollbar-width: none; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100vh;font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:99px}
 </style>
 </head>
 <body>${body}</body>
 </html>`;
 };
 
+// ─── App ───────────────────────────────────────────────────────────────────────
+
+const EXAMPLE_PROMPTS = [
+    'A login form with email, password and a "Sign in" button',
+    'An analytics dashboard with 4 KPI metric cards',
+    'A user profile card with avatar and connect button',
+    'A data table showing team members with status badges',
+];
+
 const App = () => {
-    const [prompt, setPrompt] = useState<string>('');
+    const [prompt, setPrompt] = useState('');
     const [result, setResult] = useState<GenerationResult | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const [loading, setLoading] = useState(false);
     const [history, setHistory] = useState<GenerationResult[]>([]);
     const [activeTab, setActiveTab] = useState<'code' | 'logs' | 'preview'>('code');
 
     const handleGenerate = async () => {
+        if (!prompt.trim()) return;
         setLoading(true);
         setActiveTab('logs');
         try {
-            const response = await fetch('http://localhost:8080/generate', {
+            const res = await fetch('http://localhost:8080/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, prev_code: result?.code }),
             });
-            const data: GenerationResult = await response.json();
-            const resultWithPrompt = { ...data, prompt };
-            setResult(resultWithPrompt);
-            setHistory(prev => [resultWithPrompt, ...prev].slice(0, 5));
+            const data: GenerationResult = await res.json();
+            const r = { ...data, prompt };
+            setResult(r);
+            setHistory(prev => [r, ...prev].slice(0, 6));
             setPrompt('');
             setActiveTab(data.success ? 'preview' : 'code');
-        } catch (error) {
-            console.error('Generation error:', error);
+        } catch (e) {
+            console.error(e);
             setActiveTab('code');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleClear = () => {
-        setPrompt('');
-        setResult(null);
-        setHistory([]);
-        setActiveTab('code');
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleGenerate();
     };
 
     const handleExport = () => {
         if (!result?.code) return;
-        const blob = new Blob([result.code], { type: 'text/typescript' });
+        const blob = new Blob([result.code], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'generated-component.ts';
+        const a = Object.assign(document.createElement('a'), { href: url, download: 'component.ts' });
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        a.remove();
         URL.revokeObjectURL(url);
     };
 
+    const statusColor = result?.success ? '#16a34a' : result ? '#d97706' : '#94a3b8';
+    const statusLabel = result ? (result.success ? 'Verified' : 'Needs review') : 'Idle';
+
     return (
-        <div className="min-h-screen bg-[#fcfcfd] text-[#1a1c1e] font-sans selection:bg-[#4f46e5]/10">
-            <header className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-[#2563eb] rounded-lg flex items-center justify-center shadow-sm">
-                            <span className="text-white font-bold text-lg">A</span>
+        <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', sans-serif", color: '#0f172a' }}>
+
+            {/* ── Header ── */}
+            <header style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
+                <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 10, background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+                            </svg>
                         </div>
-                        <h1 className="text-lg font-bold tracking-tight text-gray-900">Component Architect</h1>
+                        <div>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', letterSpacing: '-0.02em' }}>Component Architect</span>
+                            <span style={{ marginLeft: 8, fontSize: 11, background: '#eef2ff', color: '#4f46e5', padding: '2px 8px', borderRadius: 99, fontWeight: 600, letterSpacing: '0.04em' }}>v2.0</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-5">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         {result && (
-                            <button
-                                onClick={handleClear}
-                                className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors uppercase tracking-widest px-3 py-1 border border-red-100 rounded-full hover:bg-red-50"
-                            >
-                                Clear Session
+                            <button onClick={() => { setResult(null); setHistory([]); setActiveTab('code'); }}
+                                style={{ fontSize: 12, fontWeight: 600, color: '#dc2626', background: '#fee2e2', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
+                                Clear
                             </button>
                         )}
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                            <span>Connected</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
+                            System Ready
                         </div>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto px-6 py-12">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                    {/* Left Panel */}
-                    <div className="lg:col-span-5 space-y-8">
-                        <div className="space-y-3">
-                            <h2 className="text-4xl font-extrabold tracking-tight text-gray-900">
-                                {result ? 'Refine component.' : 'Build your ideas.'}
-                            </h2>
-                            <p className="text-lg text-gray-600 leading-relaxed max-w-sm">
-                                {result
-                                    ? 'Request a change or adjustment to the current version.'
-                                    : 'Describe the component you need. Our system will follow your design rules.'}
+            <main style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 32, alignItems: 'start' }}>
+
+                    {/* ── Left Panel ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+                        {/* Hero text */}
+                        <div>
+                            <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
+                                {result ? 'Refine your\ncomponent.' : 'Build Angular\ncomponents.'}
+                            </h1>
+                            <p style={{ marginTop: 10, fontSize: 14, color: '#64748b', lineHeight: 1.7 }}>
+                                Describe what you need in plain English. The AI pipeline generates, validates, and self-corrects production-ready Angular code.
                             </p>
                         </div>
 
-                        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden p-1">
-                            <div className="p-4">
-                                <textarea
-                                    value={prompt}
-                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
-                                    placeholder={
-                                        result
-                                            ? 'e.g., Now make the button fully rounded...'
-                                            : 'e.g., A clean login form with email and password fields...'
-                                    }
-                                    className="w-full h-40 bg-transparent border-none focus:ring-0 text-gray-800 placeholder:text-gray-400 resize-none text-base leading-relaxed outline-none"
-                                />
-                            </div>
-                            <div className="bg-gray-50 p-3 flex justify-end border-t border-gray-100">
+                        {/* Prompt box */}
+                        <div style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(15,23,42,0.06)' }}>
+                            <textarea
+                                value={prompt}
+                                onChange={e => setPrompt(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="e.g., A login form with email and password fields..."
+                                style={{
+                                    width: '100%', height: 140, padding: '16px 16px 0',
+                                    border: 'none', outline: 'none', resize: 'none',
+                                    fontSize: 14, lineHeight: 1.6, color: '#0f172a',
+                                    background: 'transparent', fontFamily: 'inherit',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                            <div style={{ padding: '10px 12px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: 11, color: '#94a3b8' }}>⌘ + Enter to generate</span>
                                 <button
                                     onClick={handleGenerate}
                                     disabled={loading || !prompt.trim()}
-                                    className="px-6 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-lg transition-colors shadow-sm flex items-center gap-2 text-sm"
+                                    style={{
+                                        padding: '10px 22px', borderRadius: 10, border: 'none', cursor: loading || !prompt.trim() ? 'not-allowed' : 'pointer',
+                                        background: loading || !prompt.trim() ? '#e2e8f0' : '#4f46e5',
+                                        color: loading || !prompt.trim() ? '#94a3b8' : '#ffffff',
+                                        fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8,
+                                        transition: 'all 0.15s ease', fontFamily: 'inherit'
+                                    }}
                                 >
                                     {loading ? (
                                         <>
-                                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            {result ? 'Updating...' : 'Generating...'}
+                                            <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite' }}>
+                                                <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3" fill="none" />
+                                                <path d="M12 2a10 10 0 0 1 10 10" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                            </svg>
+                                            {result ? 'Refining...' : 'Generating...'}
                                         </>
-                                    ) : (
-                                        result ? 'Apply Change' : 'Create Component'
-                                    )}
+                                    ) : (result ? 'Apply Change' : 'Generate')}
                                 </button>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Self-Corrections</p>
-                                <p className="text-2xl font-bold text-gray-900">{result?.iterations ?? 0}</p>
+                        {/* Example prompts */}
+                        {!result && (
+                            <div>
+                                <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Try an example</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {EXAMPLE_PROMPTS.map((ex, i) => (
+                                        <button key={i} onClick={() => setPrompt(ex)}
+                                            style={{
+                                                textAlign: 'left', padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+                                                background: '#ffffff', border: '1px solid #e2e8f0',
+                                                fontSize: 13, color: '#475569', fontFamily: 'inherit',
+                                                transition: 'all 0.12s ease'
+                                            }}
+                                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#4f46e5'; (e.currentTarget as HTMLButtonElement).style.color = '#4f46e5'; (e.currentTarget as HTMLButtonElement).style.background = '#eef2ff'; }}
+                                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#e2e8f0'; (e.currentTarget as HTMLButtonElement).style.color = '#475569'; (e.currentTarget as HTMLButtonElement).style.background = '#ffffff'; }}
+                                        >
+                                            {ex}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
-                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status</p>
-                                <p className={`text-xl font-bold ${result?.success ? 'text-green-600' : result ? 'text-amber-600' : 'text-gray-900'}`}>
-                                    {result ? (result.success ? 'Verified' : 'Refining...') : 'Ready'}
-                                </p>
+                        )}
+
+                        {/* Stats */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div style={{ background: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '16px 18px', boxShadow: '0 1px 4px rgba(15,23,42,0.05)' }}>
+                                <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>Iterations</p>
+                                <p style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.04em' }}>{result?.iterations ?? 0}</p>
+                            </div>
+                            <div style={{ background: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '16px 18px', boxShadow: '0 1px 4px rgba(15,23,42,0.05)' }}>
+                                <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>Status</p>
+                                <p style={{ fontSize: 16, fontWeight: 700, color: statusColor, margin: 0 }}>{statusLabel}</p>
                             </div>
                         </div>
 
+                        {/* History */}
                         {history.length > 0 && (
-                            <div className="space-y-4 pt-4 border-t border-gray-100">
-                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Session History</h3>
-                                <div className="space-y-2">
+                            <div>
+                                <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>History</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                                     {history.map((h, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => { setResult(h); setActiveTab('preview'); }}
-                                            className={`w-full text-left p-3 rounded-lg border transition-all flex items-center justify-between group ${result === h ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100 hover:border-gray-300'}`}
-                                        >
-                                            <div className="flex items-center gap-3 w-full overflow-hidden">
-                                                <div className={`w-2 h-2 shrink-0 rounded-full ${h.success ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                                                <span className="text-sm font-medium text-gray-700 truncate flex-1">{h.prompt || 'Generated Component'}</span>
-                                            </div>
-                                            <span className="text-[10px] text-gray-400 font-mono opacity-0 group-hover:opacity-100 transition-opacity">RESTORE</span>
+                                        <button key={i} onClick={() => { setResult(h); setActiveTab('preview'); }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                                                borderRadius: 10, cursor: 'pointer', border: `1px solid ${result === h ? '#c7d2fe' : '#e2e8f0'}`,
+                                                background: result === h ? '#eef2ff' : '#ffffff', fontFamily: 'inherit', textAlign: 'left',
+                                                transition: 'all 0.12s ease'
+                                            }}>
+                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: h.success ? '#16a34a' : '#f59e0b', flexShrink: 0 }} />
+                                            <span style={{ fontSize: 12, color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.prompt}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -237,106 +265,130 @@ const App = () => {
                         )}
                     </div>
 
-                    {/* Right Panel */}
-                    <div className="lg:col-span-7 space-y-6">
-                        <div className="flex items-center justify-between border-b border-gray-200">
-                            <div className="flex items-center gap-6">
-                                {(['code', 'logs', 'preview'] as const).map(tab => (
-                                    <button
-                                        key={tab}
-                                        onClick={() => setActiveTab(tab)}
-                                        className={`text-sm font-bold pb-3 px-1 transition-colors capitalize ${activeTab === tab ? 'text-gray-900 border-b-2 border-[#2563eb]' : 'text-gray-400 hover:text-gray-600'}`}
-                                    >
-                                        {tab === 'code' ? 'Source Code' : tab === 'logs' ? 'Process Logs' : 'Live Preview'}
+                    {/* ── Right Panel ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+
+                        {/* Tab bar */}
+                        <div style={{ background: '#ffffff', borderRadius: '16px 16px 0 0', borderTop: '1px solid #e2e8f0', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', gap: 2 }}>
+                                {([['code', 'Source Code'], ['logs', 'Process Logs'], ['preview', 'Live Preview']] as const).map(([tab, label]) => (
+                                    <button key={tab} onClick={() => setActiveTab(tab)}
+                                        style={{
+                                            padding: '14px 16px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                                            fontSize: 13, fontWeight: activeTab === tab ? 700 : 500,
+                                            color: activeTab === tab ? '#4f46e5' : '#94a3b8',
+                                            background: 'transparent',
+                                            borderBottom: activeTab === tab ? '2px solid #4f46e5' : '2px solid transparent',
+                                            transition: 'all 0.12s ease'
+                                        }}>
+                                        {label}
                                     </button>
                                 ))}
                             </div>
                             {result?.code && activeTab === 'code' && (
-                                <button
-                                    onClick={handleExport}
-                                    className="mb-2 text-xs font-bold text-[#2563eb] hover:text-[#1d4ed8] flex items-center gap-1.5 transition-colors"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
+                                <button onClick={handleExport}
+                                    style={{ fontSize: 12, fontWeight: 600, color: '#4f46e5', background: '#eef2ff', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}>
                                     Export .ts
                                 </button>
                             )}
                         </div>
 
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden flex flex-col h-[600px]">
-                            {/* Window bar */}
-                            <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-200 flex items-center justify-between shrink-0">
-                                <div className="flex gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                                    <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                                    <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                                </div>
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                    {activeTab === 'code' ? 'angular-component.ts' : activeTab === 'logs' ? 'agent-workflow.log' : 'preview-rendering.html'}
+                        {/* Window body */}
+                        <div style={{ background: activeTab === 'code' ? '#ffffff' : activeTab === 'logs' ? '#0f172a' : '#f1f5f9', border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 16px 16px', height: 600, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+                            {/* Traffic lights */}
+                            <div style={{ padding: '10px 16px', borderBottom: `1px solid ${activeTab === 'logs' ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fca5a5' }} />
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fcd34d' }} />
+                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#86efac' }} />
+                                <span style={{ marginLeft: 8, fontSize: 11, color: activeTab === 'logs' ? 'rgba(255,255,255,0.25)' : '#cbd5e1', fontWeight: 500, letterSpacing: '0.04em' }}>
+                                    {activeTab === 'code' ? 'angular-component.ts' : activeTab === 'logs' ? 'agent-workflow.log' : 'live-preview.html'}
                                 </span>
                             </div>
 
-                            {/* Content */}
-                            <div className={`flex-1 overflow-auto min-h-0 ${activeTab === 'logs' ? 'bg-gray-900' : activeTab === 'preview' ? 'bg-[#0f172a]' : 'bg-white p-6'}`}>
-                                {activeTab === 'code' ? (
+                            <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+                                {/* Source Code */}
+                                {activeTab === 'code' && (
                                     result ? (
-                                        <pre className="font-mono text-[13px] leading-relaxed text-blue-900/80 antialiased whitespace-pre-wrap">
+                                        <pre style={{ margin: 0, padding: '20px 24px', fontFamily: "'JetBrains Mono', 'Fira Code', monospace", fontSize: 12.5, lineHeight: 1.7, color: '#334155', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                             <code>{result.code}</code>
                                         </pre>
                                     ) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-gray-300 select-none space-y-4">
-                                            <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
-                                                <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                            </div>
-                                            <p className="text-sm font-medium">Your generated code will appear here</p>
+                                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#cbd5e1' }}>
+                                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                <path d="M8 9l3 3-3 3m5 0h3" strokeLinecap="round" strokeLinejoin="round" />
+                                                <rect x="3" y="3" width="18" height="18" rx="3" />
+                                            </svg>
+                                            <p style={{ fontSize: 13, margin: 0, fontWeight: 500 }}>Generated code will appear here</p>
+                                            <p style={{ fontSize: 12, margin: 0, color: '#e2e8f0' }}>Enter a prompt and click Generate</p>
                                         </div>
                                     )
-                                ) : activeTab === 'logs' ? (
-                                    <div className="p-6 font-mono text-[11px] h-full overflow-auto">
-                                        {result?.logs?.length ? (
-                                            result.logs.map((log: string, i: number) => (
-                                                <div key={i} className="flex gap-3 mb-2 last:mb-0 border-l-2 border-gray-800 pl-3">
-                                                    <span className="text-gray-600 shrink-0 select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                                                    <span className="text-blue-400 font-bold select-none whitespace-nowrap">AGENT →</span>
-                                                    <span className="text-gray-300">{log}</span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="h-full flex items-center justify-center text-gray-600">
-                                                <p>No activity logs yet.</p>
+                                )}
+
+                                {/* Process Logs */}
+                                {activeTab === 'logs' && (
+                                    <div style={{ padding: '16px 20px' }}>
+                                        {result?.logs?.length ? result.logs.map((log, i) => (
+                                            <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 10, paddingLeft: 12, borderLeft: '2px solid rgba(79,70,229,0.3)' }}>
+                                                <span style={{ fontSize: 10, color: '#475569', flexShrink: 0, fontFamily: 'monospace' }}>
+                                                    [{String(i + 1).padStart(2, '0')}]
+                                                </span>
+                                                <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700, flexShrink: 0, fontFamily: 'monospace' }}>AGENT →</span>
+                                                <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', lineHeight: 1.6 }}>{log}</span>
                                             </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    /* Live Preview */
-                                    <div className="h-full overflow-hidden">
-                                        {result?.code ? (
-                                            <iframe
-                                                key={result.code.length + result.iterations}
-                                                title="Live Component Preview"
-                                                className="w-full h-full border-none"
-                                                srcDoc={buildSrcDoc(result.code)}
-                                                sandbox="allow-scripts"
-                                            />
-                                        ) : (
-                                            <div className="h-full flex flex-col items-center justify-center text-white/20 select-none space-y-3">
-                                                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                </svg>
-                                                <p className="text-sm font-medium text-white/30">Generate a component to see the live preview</p>
+                                        )) : (
+                                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>
+                                                <p style={{ fontSize: 13 }}>No logs yet. Run a generation.</p>
                                             </div>
                                         )}
                                     </div>
                                 )}
+
+                                {/* Live Preview */}
+                                {activeTab === 'preview' && (
+                                    result?.code ? (
+                                        <iframe
+                                            key={result.iterations + result.code.length}
+                                            title="Live Preview"
+                                            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                                            srcDoc={buildSrcDoc(result.code)}
+                                            sandbox="allow-scripts"
+                                        />
+                                    ) : (
+                                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#cbd5e1' }}>
+                                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7s-8.268-2.943-9.542-7z" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <p style={{ fontSize: 13, margin: 0, fontWeight: 500 }}>Live preview will appear here</p>
+                                            <p style={{ fontSize: 12, margin: 0, color: '#e2e8f0' }}>Generate a component first</p>
+                                        </div>
+                                    )
+                                )}
                             </div>
+                        </div>
+
+                        {/* Status bar */}
+                        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+                            <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                                {result ? `Design System v3.0 · ${result.iterations} iteration${result.iterations !== 1 ? 's' : ''}` : 'Powered by Groq LLaMA-3 · Design System v3.0'}
+                            </span>
+                            {result && (
+                                <span style={{ fontSize: 11, fontWeight: 600, color: result.success ? '#16a34a' : '#d97706', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: result.success ? '#16a34a' : '#d97706', display: 'inline-block' }} />
+                                    {result.success ? 'Validation passed' : 'Needs review'}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
             </main>
+
+            <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
+                * { box-sizing: border-box; }
+                textarea::placeholder { color: #94a3b8; }
+            `}</style>
         </div>
     );
 };
