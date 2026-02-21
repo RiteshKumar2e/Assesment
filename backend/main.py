@@ -53,16 +53,36 @@ async def generate_component(request: GenerationRequest):
     used_model = "unknown"
     t_start = time.time()
 
-    short_prompt = request.prompt[:60] + ("..." if len(request.prompt) > 60 else "")
+    short_prompt = request.prompt[:70] + ("..." if len(request.prompt) > 70 else "")
+    ds_name    = design_system.get("name", "Architect Design System")
+    ds_version = design_system.get("version", "3.0.0")
+    ds_theme   = design_system.get("theme", "light")
+    colors     = design_system.get("tokens", {}).get("colors", {})
+    rules      = design_system.get("rules", [])
 
-    logs.append(f"[INIT]     Prompt received: \"{short_prompt}\"")
-    logs.append(f"[INIT]     Design System: {design_system.get('name', 'Architect DS')} v{design_system.get('version', '3.0')}")
-    logs.append(f"[INIT]     Max self-correction attempts: {MAX_ATTEMPTS}")
-    logs.append("[GROQ]     Connecting to Groq API — trying models in cascade...")
+    # ─── PHASE 1: Design System ───────────────────────────────────────────────
+    logs.append("━━━ PHASE 1 — DESIGN SYSTEM LOADING ━━━")
+    logs.append(f"  System : {ds_name} v{ds_version} ({ds_theme} theme)")
+    logs.append(f"  Tokens : {len(colors)} color tokens loaded")
+    logs.append(f"  Primary: {colors.get('primary', 'N/A')}  |  BG: {colors.get('background', 'N/A')}")
+    logs.append(f"  Rules  : {len(rules)} enforcement rule(s) injected into prompt")
+    logs.append(f"  Prompt : \"{short_prompt}\"")
+    logs.append(f"  Max Self-Correction Loops: {MAX_ATTEMPTS}")
 
     for attempt in range(MAX_ATTEMPTS):
-        phase = "Initial generation" if attempt == 0 else f"Self-correction pass #{attempt}"
-        logs.append(f"[GEN #{attempt+1}]  {phase} starting...")
+
+        # ─── PHASE 2: Generator ───────────────────────────────────────────────
+        phase_label = "INITIAL GENERATION" if attempt == 0 else f"SELF-CORRECTION — ATTEMPT #{attempt}"
+        logs.append(f"")
+        logs.append(f"━━━ PHASE 2 — GENERATOR [{attempt + 1}/{MAX_ATTEMPTS}] ━━━")
+        logs.append(f"  Action : {phase_label}")
+        if attempt == 0:
+            logs.append(f"  Mode   : Constructing prompt with design system context")
+            logs.append(f"  Tech   : Angular 17+ standalone | Tailwind CSS | TypeScript")
+        else:
+            logs.append(f"  Mode   : Re-prompting model with {len(errors or [])} validation error(s)")
+            logs.append(f"  Input  : Previous code + error context injected into prompt")
+        logs.append(f"  Groq   : Trying model cascade (10 models, best-first)...")
 
         try:
             current_code, used_model = await generator.generate(
@@ -70,26 +90,42 @@ async def generate_component(request: GenerationRequest):
                 request.prev_code if attempt == 0 else current_code,
                 errors,
             )
-            logs.append(f"[GEN #{attempt+1}]  Model selected: {used_model}")
-            logs.append(f"[GEN #{attempt+1}]  Response received — {len(current_code)} chars of TypeScript")
+            elapsed = round(time.time() - t_start, 2)
+            logs.append(f"  Model  : {used_model}")
+            logs.append(f"  Output : {len(current_code):,} chars of TypeScript received ({elapsed}s)")
+
         except RuntimeError as e:
-            logs.append(f"[ERROR]    Groq API unreachable: {e}")
+            logs.append(f"")
+            logs.append(f"━━━ FATAL ERROR ━━━")
+            logs.append(f"  Groq API unreachable: {e}")
+            logs.append(f"  Action : Verify GROQ_API_KEY in backend/.env")
             return GenerationResponse(
-                code=f"// GROQ API ERROR: {e}\n// Check your GROQ_API_KEY and network connectivity.",
+                code=f"// GROQ API ERROR\n// {e}\n// Check your GROQ_API_KEY and network connectivity.",
                 iterations=attempt + 1,
                 logs=logs,
                 success=False,
                 model=None,
             )
 
-        logs.append(f"[LINT]     Running design system validator...")
+        # ─── PHASE 3: Validator (Linter-Agent) ───────────────────────────────
+        logs.append(f"")
+        logs.append(f"━━━ PHASE 3 — LINTER-AGENT (VALIDATOR) ━━━")
+        logs.append(f"  Check 1 of 3 : Syntax validation (brackets, decorators)...")
+        logs.append(f"  Check 2 of 3 : Design token compliance (hex color audit)...")
+        logs.append(f"  Check 3 of 3 : Angular standalone structure check...")
+
         result = validator.validate(current_code)
 
         if result["valid"]:
             elapsed = round(time.time() - t_start, 2)
-            logs.append(f"[LINT]     All checks passed — no violations found")
-            logs.append(f"[OK]       Component verified in {attempt + 1} iteration(s) | {elapsed}s total")
-            logs.append(f"[OUTPUT]   {used_model} | standalone: true | Tailwind CSS | Light theme")
+            logs.append(f"  Result : ✓ ALL CHECKS PASSED — 0 violations found")
+            logs.append(f"")
+            logs.append(f"━━━ PHASE 4 — COMPLETE ━━━")
+            logs.append(f"  Status    : SUCCESS")
+            logs.append(f"  Iteration : {attempt + 1} of {MAX_ATTEMPTS}")
+            logs.append(f"  Model     : {used_model}")
+            logs.append(f"  Time      : {elapsed}s total")
+            logs.append(f"  Component : standalone: true | Light theme | Tailwind CSS")
             return GenerationResponse(
                 code=current_code,
                 iterations=attempt + 1,
@@ -99,14 +135,25 @@ async def generate_component(request: GenerationRequest):
             )
         else:
             errors = result["errors"]
-            logs.append(f"[LINT]     {len(errors)} violation(s) found:")
-            for err in errors:
-                logs.append(f"           ↳ {err}")
+            logs.append(f"  Result : ✗ {len(errors)} VIOLATION(S) DETECTED")
+            for i, err in enumerate(errors, 1):
+                logs.append(f"    [{i}] {err}")
+
+            # ─── PHASE 4: Self-Correction ─────────────────────────────────────
             if attempt < MAX_ATTEMPTS - 1:
-                logs.append(f"[RETRY]    Sending error context back to model for correction...")
+                logs.append(f"")
+                logs.append(f"━━━ PHASE 4 — SELF-CORRECTION LOOP ━━━")
+                logs.append(f"  Trigger  : Validation failed — {len(errors)} error(s) found")
+                logs.append(f"  Action   : Packaging error context for LLM feedback...")
+                logs.append(f"  Feedback : Error logs will be injected as correction prompt")
+                logs.append(f"  Next     : Retrying generation (attempt {attempt + 2} of {MAX_ATTEMPTS})...")
 
     elapsed = round(time.time() - t_start, 2)
-    logs.append(f"[WARN]     Max attempts reached after {elapsed}s — returning best result")
+    logs.append(f"")
+    logs.append(f"━━━ PHASE 4 — COMPLETE (WITH WARNINGS) ━━━")
+    logs.append(f"  Status    : MAX ATTEMPTS REACHED")
+    logs.append(f"  Time      : {elapsed}s")
+    logs.append(f"  Note      : Returning best available output")
     return GenerationResponse(
         code=current_code,
         iterations=MAX_ATTEMPTS,

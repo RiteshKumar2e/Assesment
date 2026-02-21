@@ -120,14 +120,6 @@ const App = () => {
     const statusColor = result?.success ? '#16a34a' : result ? '#d97706' : '#94a3b8';
     const statusLabel = result ? (result.success ? 'Verified' : 'Needs review') : 'Idle';
 
-    const logColor = (log: string): string => {
-        if (log.startsWith('[OK]') || log.startsWith('[OUTPUT]')) return '#16a34a';
-        if (log.startsWith('[ERROR]') || log.startsWith('[WARN]')) return '#dc2626';
-        if (log.startsWith('[LINT]') && log.includes('violation')) return '#d97706';
-        if (log.startsWith('[GROQ]') || log.startsWith('[GEN')) return '#4f46e5';
-        if (log.startsWith('[RETRY]')) return '#d97706';
-        return '#64748b';
-    };
 
     return (
         <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', sans-serif", color: '#0f172a' }}>
@@ -336,41 +328,84 @@ const App = () => {
                                 )}
 
                                 {/* Process Logs */}
-                                {activeTab === 'logs' && (
-                                    <div style={{ padding: '16px 20px', height: '100%', overflowY: 'auto' }}>
-                                        {result?.logs?.length ? (
-                                            <>
-                                                {result.logs.map((log, i) => (
-                                                    <div key={i} style={{ display: 'flex', gap: 0, marginBottom: 6 }}>
-                                                        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', flexShrink: 0, fontFamily: 'monospace', minWidth: 28, paddingTop: 1 }}>
-                                                            {String(i + 1).padStart(2, '0')}
-                                                        </span>
-                                                        <span style={{ fontSize: 11.5, color: logColor(log), fontFamily: "'JetBrains Mono','Fira Code',monospace", lineHeight: 1.7, wordBreak: 'break-word', flex: 1 }}>
-                                                            {log}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {loading && (
-                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, paddingLeft: 28 }}>
-                                                        <svg width="12" height="12" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }}>
-                                                            <circle cx="12" cy="12" r="10" stroke="rgba(79,70,229,0.3)" strokeWidth="3" fill="none" />
-                                                            <path d="M12 2a10 10 0 0 1 10 10" stroke="#4f46e5" strokeWidth="3" fill="none" strokeLinecap="round" />
-                                                        </svg>
-                                                        <span style={{ fontSize: 11, color: '#4f46e5', fontFamily: 'monospace' }}>Groq model responding...</span>
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'rgba(255,255,255,0.15)' }}>
-                                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
-                                                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                                                    <path d="M7 8h2m0 0v8m0-8h4a2 2 0 0 1 0 4H9" strokeLinecap="round" />
-                                                </svg>
-                                                <p style={{ fontSize: 12, margin: 0 }}>Logs will appear during generation</p>
+                                {activeTab === 'logs' && (() => {
+                                    const renderLog = (log: string, i: number) => {
+                                        const isPhase = log.startsWith('━━━');
+                                        const isEmpty = log.trim() === '';
+                                        const isSuccess = log.includes('ALL CHECKS PASSED') || log.includes('SUCCESS') || log.includes('✓');
+                                        const isError = log.includes('VIOLATION') || log.includes('FATAL') || log.includes('✗') || log.includes('[');
+                                        const isWarn = log.includes('SELF-CORRECTION') || log.includes('WARNING') || log.includes('Retrying');
+                                        const isInfo = log.includes('Model  :') || log.includes('model :') || log.includes('Groq');
+
+                                        if (isEmpty) return <div key={i} style={{ height: 6 }} />;
+
+                                        if (isPhase) {
+                                            const phaseNum = log.includes('PHASE 1') ? 1 : log.includes('PHASE 2') ? 2 : log.includes('PHASE 3') ? 3 : 4;
+                                            const phaseClr = ['#6366f1', '#0ea5e9', '#f59e0b', '#10b981'][phaseNum - 1] || '#6366f1';
+                                            const phaseText = log.replace(/━+\s*/g, '').trim();
+                                            return (
+                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 8px' }}>
+                                                    <div style={{ width: 4, height: 16, borderRadius: 2, background: phaseClr, flexShrink: 0 }} />
+                                                    <span style={{ fontSize: 10, fontWeight: 700, color: phaseClr, letterSpacing: '0.12em', fontFamily: "'JetBrains Mono','Fira Code',monospace", textTransform: 'uppercase' }}>
+                                                        {phaseText}
+                                                    </span>
+                                                    <div style={{ flex: 1, height: 1, background: `${phaseClr}25` }} />
+                                                </div>
+                                            );
+                                        }
+
+                                        const color = isSuccess ? '#4ade80'
+                                            : isError ? '#f87171'
+                                                : isWarn ? '#fbbf24'
+                                                    : isInfo ? '#818cf8'
+                                                        : 'rgba(203,213,225,0.7)';
+
+                                        return (
+                                            <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 3, paddingLeft: 14 }}>
+                                                <span style={{ fontSize: 11.5, color, fontFamily: "'JetBrains Mono','Fira Code',monospace", lineHeight: 1.75, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                                                    {log}
+                                                </span>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
+                                        );
+                                    };
+
+                                    return (
+                                        <div style={{ padding: '4px 16px 16px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
+                                            {result?.logs?.length ? (
+                                                <>
+                                                    {result.logs.map((log, i) => renderLog(log, i))}
+                                                    {loading && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 0 0 14px' }}>
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" style={{ animation: 'spin 0.9s linear infinite', flexShrink: 0 }}>
+                                                                <circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.25)" strokeWidth="3" fill="none" />
+                                                                <path d="M12 2a10 10 0 0 1 10 10" stroke="#6366f1" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                                            </svg>
+                                                            <span style={{ fontSize: 11.5, color: '#818cf8', fontFamily: "'JetBrains Mono','Fira Code',monospace" }}>
+                                                                Waiting for Groq...
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : loading ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '20px 14px' }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" style={{ animation: 'spin 0.9s linear infinite' }}>
+                                                        <circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.25)" strokeWidth="3" fill="none" />
+                                                        <path d="M12 2a10 10 0 0 1 10 10" stroke="#6366f1" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                                    </svg>
+                                                    <span style={{ fontSize: 12, color: '#818cf8', fontFamily: "'JetBrains Mono',monospace" }}>Agentic loop starting...</span>
+                                                </div>
+                                            ) : (
+                                                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'rgba(255,255,255,0.12)', paddingTop: 60 }}>
+                                                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                                                        <path d="M3 12h4l3-9 4 18 3-9h4" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                    <span style={{ fontSize: 12, fontFamily: 'monospace' }}>Agentic loop logs will stream here</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+
 
                                 {/* Live Preview */}
                                 {activeTab === 'preview' && (
