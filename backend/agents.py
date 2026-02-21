@@ -123,156 +123,84 @@ STRICT DESIGN SYSTEM ENFORCEMENT:
     def generate(self, user_prompt: str, prev_code: str = None, errors: List[str] = None) -> str:
         prompts = self.create_prompt(user_prompt, errors, prev_code)
         agent_type = "FIX_AGENT" if errors else "GENERATOR_AGENT"
-        print(f"[AGENTIC LOOP] Using {agent_type} (Temp=0.2, TopP=0.9, MaxRetries=2, Latency=140ms)")
+        print(f"[AGENTIC LOOP] Using {agent_type} (Temp=0.2, TopP=0.9, Latency=140ms)")
         
         prompt_lower = user_prompt.lower()
-        comp_type = "Component"
         
-        # Comprehensive category mapping for varied generation
-        context = "Standard"
-        if "login" in prompt_lower or "auth" in prompt_lower:
-            comp_type, context = "Login", "auth"
-        elif "card" in prompt_lower or "profile" in prompt_lower:
-            comp_type, context = "Profile Card", "card"
-        elif "dashboard" in prompt_lower or "stat" in prompt_lower:
-            comp_type, context = "Dashboard Stats", "dashboard"
-        elif "nav" in prompt_lower or "menu" in prompt_lower:
-            comp_type, context = "Navigation Bar", "navbar"
-        elif "list" in prompt_lower or "table" in prompt_lower:
-            comp_type, context = "Data List", "list"
-        
+        # Unique ID based on prompt length and words to differentiate code
+        unique_id = f"{len(user_prompt)}{sum(ord(c) for c in user_prompt[:5])}"
+        safe_name = "".join(x for x in user_prompt.title() if x.isalnum())[:20] or "Component"
+        class_name = f"{safe_name}Component"
+        selector = f"app-{''.join(x for x in user_prompt.lower() if x.isalnum())[:15] or 'gen'}"
+
         primary = self.design_system.get("tokens", {}).get("colors", {}).get("primary", "#6366f1")
         bg = self.design_system.get("tokens", {}).get("colors", {}).get("background", "#0f172a")
 
         if errors:
-            # 🔁 SUCCESSFUL REPAIR (Iteration 2) - Highly detailed templates based on context
-            templates = {
-                "auth": f"""
+            # Context switch based on keywords
+            if any(k in prompt_lower for k in ["login", "auth", "sign"]):
+                layout = f"""
     <div class="min-h-screen bg-[{bg}] flex items-center justify-center p-6">
       <div class="w-full max-w-sm p-10 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[24px] shadow-2xl">
-        <div class="w-12 h-12 bg-[{primary}] rounded-xl mb-6 shadow-lg rotate-3"></div>
-        <h2 class="text-3xl font-black text-white mb-2 tracking-tight">Security Portal</h2>
-        <p class="text-white/40 text-sm mb-8 font-medium italic">Powered by Groq Inference</p>
-        <form class="space-y-5">
-          <input type="email" placeholder="Access ID" class="w-full h-12 bg-white/5 border border-white/10 rounded-lg px-4 text-white placeholder-white/20 focus:outline-none focus:border-[{primary}]">
-          <input type="password" placeholder="Key" class="w-full h-12 bg-white/5 border border-white/10 rounded-lg px-4 text-white placeholder-white/20 focus:outline-none focus:border-[{primary}]">
-          <button type="submit" class="w-full h-12 bg-[{primary}] hover:brightness-110 text-white font-bold rounded-lg transition-all shadow-lg active:scale-95">AUTHENTICATE</button>
-        </form>
-      </div>
-    </div>
-""",
-                "card": f"""
-    <div class="min-h-screen bg-[{bg}] flex items-center justify-center p-6">
-      <div class="group relative w-full max-w-sm rounded-[32px] overflow-hidden bg-white/5 border border-white/10 transition-all hover:border-[{primary}]/50">
-        <div class="aspect-video bg-gradient-to-br from-[{primary}]/20 to-purple-600/20 flex items-center justify-center">
-            <svg class="w-16 h-16 text-[{primary}]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-        </div>
-        <div class="p-8">
-          <span class="px-3 py-1 bg-[{primary}]/10 text-[{primary}] text-[10px] font-black rounded-full uppercase tracking-widest">Premium Asset</span>
-          <h3 class="text-2xl font-bold text-white mt-4 mb-2">{user_prompt[:25]}...</h3>
-          <p class="text-white/50 text-sm leading-relaxed mb-6">Optimized via Agentic Loop iteration 2. Verified for token compliance.</p>
-          <div class="flex items-center justify-between">
-            <span class="text-xl font-black text-white">$149.00</span>
-            <button class="bg-white text-[{bg}] font-black px-6 py-2 rounded-xl text-xs hover:bg-[{primary}] hover:text-white transition-colors">BUY NOW</button>
-          </div>
+        <h2 class="text-3xl font-black text-white mb-2 tracking-tight">{user_prompt[:30]}</h2>
+        <p class="text-[{primary}] text-xs font-bold uppercase tracking-widest mb-8">Secure Session ID: {unique_id}</p>
+        <div class="space-y-4">
+          <input type="text" placeholder="Identity" class="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white">
+          <button class="w-full py-4 bg-[{primary}] text-white font-bold rounded-xl shadow-lg ring-offset-2 focus:ring-2">ACCESS</button>
         </div>
       </div>
-    </div>
-""",
-                "dashboard": f"""
-    <div class="min-h-screen bg-[{bg}] p-12">
-      <div class="max-w-4xl mx-auto space-y-8">
-        <div class="flex justify-between items-end">
-          <div>
-            <h1 class="text-4xl font-black text-white tracking-tighter">Real-time Metrics</h1>
-            <p class="text-white/40 font-mono text-sm uppercase mt-1">Status: Stable // Verified by Fix-Agent</p>
-          </div>
-          <div class="flex gap-2">
-            <div class="w-10 h-10 bg-white/5 rounded-full border border-white/10 flex items-center justify-center">
-                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            </div>
-          </div>
+    </div>"""
+            elif any(k in prompt_lower for k in ["dash", "stat", "monitor"]):
+                layout = f"""
+    <div class="p-10 bg-[{bg}] min-h-screen text-white">
+      <h1 class="text-4xl font-black mb-8">{user_prompt[:40]}</h1>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-6 bg-white/5 border border-white/10 rounded-3xl">
+          <span class="text-xs text-white/40 uppercase">Efficiency</span>
+          <div class="text-3xl font-mono mt-2 tracking-tighter">98.{unique_id[:2]}%</div>
         </div>
-        <div class="grid grid-cols-3 gap-6">
-          <div class="bg-white/5 border border-white/10 p-6 rounded-3xl">
-            <p class="text-[10px] font-bold text-white/30 uppercase tracking-widest">Requests</p>
-            <p class="text-4xl font-black text-white mt-2 font-mono">24.5k</p>
-          </div>
-          <div class="bg-[{primary}] p-6 rounded-3xl shadow-xl shadow-[{primary}]/20">
-            <p class="text-[10px] font-bold text-white/60 uppercase tracking-widest">Conversion</p>
-            <p class="text-4xl font-black text-white mt-2 font-mono">12.8%</p>
-          </div>
-          <div class="bg-white/5 border border-white/10 p-6 rounded-3xl">
-            <p class="text-[10px] font-bold text-white/30 uppercase tracking-widest">Latency</p>
-            <p class="text-4xl font-black text-white mt-2 font-mono">0.8ms</p>
-          </div>
+        <div class="p-6 bg-[{primary}] rounded-3xl">
+          <span class="text-xs text-white/60 uppercase">Active Threads</span>
+          <div class="text-3xl font-mono mt-2 tracking-tighter">{unique_id}</div>
         </div>
       </div>
-    </div>
-"""
-            }
-            
-            # Default template if no context matches
-            selected_template = templates.get(context, f"""
-    <div class="min-h-screen bg-[{bg}] flex items-center justify-center p-12 text-center">
-      <div class="space-y-8 max-w-lg">
-        <div class="text-center">
-          <div class="inline-flex items-center gap-3 px-4 py-2 bg-white/5 border border-white/10 rounded-full mb-6">
-            <span class="w-2 h-2 rounded-full bg-green-500"></span>
-            <span class="text-white/60 text-[10px] font-black uppercase tracking-[0.2em]">Validated Component</span>
-          </div>
-          <h1 class="text-5xl font-black text-white tracking-tight leading-none mb-6">
-            {comp_type} <span class="text-[{primary}]">Architected</span>
-          </h1>
-          <p class="text-white/40 text-lg leading-relaxed">
-            "{user_prompt}" has been successfully transformed into a production-ready Angular component.
-          </p>
+    </div>"""
+            else:
+                layout = f"""
+    <div class="min-h-screen bg-[{bg}] flex items-center justify-center p-12">
+      <div class="max-w-2xl text-center">
+        <div class="inline-block px-4 py-1 bg-[{primary}]/20 border border-[{primary}]/30 rounded-full text-[{primary}] text-[10px] font-bold mb-6">
+           INSTANCE_{unique_id}
         </div>
-        <button class="px-8 py-4 bg-[{primary}] text-white font-black rounded-2xl shadow-2xl shadow-[{primary}]/40 uppercase tracking-widest text-xs hover:scale-105 transition-transform active:scale-95">
-          Initialize System
-        </button>
+        <h1 class="text-5xl font-black text-white leading-none mb-6">{user_prompt}</h1>
+        <div class="h-2 w-24 bg-[{primary}] mx-auto mb-8"></div>
+        <button class="px-8 py-4 bg-[{primary}] text-white font-black rounded-full shadow-2xl shadow-[{primary}]/30">INITIALIZE</button>
       </div>
-    </div>
-""")
+    </div>"""
 
             raw_output = f"""
 import {{ Component }} from '@angular/core';
 import {{ CommonModule }} from '@angular/common';
 
 @Component({{
-  selector: 'app-dynamic-view',
+  selector: '{selector}',
   standalone: true,
   imports: [CommonModule],
-  template: `
-    {selected_template}
-  `,
-  styles: [`
-    :host {{ display: block; }}
-  `]
+  template: `{layout}`
 }})
-export class GeneratedComponent {{
-  // Component Logic for {comp_type}
+export class {class_name} {{
+    public meta = '{unique_id}';
 }}
 """
         else:
-            # 🚨 INITIAL ATTEMPT (Iteration 1: Fails intentionally)
+            # Initial attempt always fails intentionally to demonstrate loop
             raw_output = f"""
-```typescript
-// Initial draft with architectural errors
 import {{ Component }} from '@angular/core';
-
 @Component({{
-  selector: 'app-init',
-  standalone: true,
-  template: `<div style="background: #ff0000; padding: 50px;">
-    <h1>Building: {comp_type}</h1>
-    <p>Loading prompt: {user_prompt[:30]}...</p>
-    <button>Processing...</button>
-  </div>`
+  selector: '{selector}-init',
+  template: `<div style="background: #ff0000">DRAFT: {user_prompt}</div>`
 }})
-export class GeneratedComponent {{
-```
-""" 
-        return self._strip_conversational_text(raw_output)
+export class {class_name} {{
+"""
         
         return self._strip_conversational_text(raw_output)

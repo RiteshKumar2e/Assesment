@@ -308,22 +308,23 @@ const App = () => {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="space-y-6 py-4">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="w-12 h-12 rounded-2xl bg-[#f43f5e] shrink-0 shadow-lg shadow-rose-500/20"></div>
-                                                                <div className="space-y-3 flex-1">
-                                                                    <div className="h-3 w-1/2 bg-white/20 rounded-full"></div>
-                                                                    <div className="h-2 w-full bg-white/5 rounded-full"></div>
-                                                                </div>
+                                                        <div className="space-y-8 py-8 px-4 text-center">
+                                                            <div className="inline-flex items-center gap-3 px-4 py-2 bg-[#6366f1]/10 border border-[#6366f1]/20 rounded-full">
+                                                                <span className="w-2 h-2 rounded-full bg-[#6366f1] animate-pulse"></span>
+                                                                <span className="text-[#6366f1] text-[10px] font-black uppercase tracking-widest">Active Render</span>
                                                             </div>
-                                                            <div className="h-px bg-white/10 w-full"></div>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="h-24 bg-white/5 rounded-2xl border border-white/5"></div>
-                                                                <div className="h-24 bg-white/5 rounded-2xl border border-white/5"></div>
+                                                            <div className="space-y-4">
+                                                                <h1 className="text-3xl font-black text-white leading-tight tracking-tighter">
+                                                                    {result.prompt}
+                                                                </h1>
+                                                                <div className="h-1 w-20 bg-[#6366f1] mx-auto rounded-full opacity-50"></div>
                                                             </div>
-                                                            <div className="h-12 w-full bg-white text-[#0f172a] rounded-xl font-black text-[10px] flex items-center justify-center tracking-[0.3em] uppercase">
-                                                                SYSTEM_READY
-                                                            </div>
+                                                            <p className="text-white/40 text-sm leading-relaxed max-w-xs mx-auto italic">
+                                                                Proprietary architecture generated via agentic loop iteration {result.iterations}.
+                                                            </p>
+                                                            <button className="w-full py-4 bg-white text-[#0f172a] font-black rounded-2xl text-[10px] tracking-[0.3em] uppercase transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-white/5">
+                                                                Initialize Instance
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
