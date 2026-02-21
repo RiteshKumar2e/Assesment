@@ -4,6 +4,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
+
 try:
     from .agents import GeneratorAgent, ValidatorAgent
 except ImportError:

@@ -3,6 +3,9 @@ import re
 import os
 import httpx
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class ValidatorAgent:
     def __init__(self, design_system: Dict[str, Any]):
@@ -94,8 +97,23 @@ Fix the errors and maintain the design system."""
         return text.strip()
 
     async def generate(self, user_prompt: str, prev_code: str = None, errors: List[str] = None) -> str:
+        # Re-check key in case it was loaded after instantiation
         if not self.api_key:
-            return "// ERROR: GROQ_API_KEY not found in .env"
+            self.api_key = os.getenv("GROQ_API_KEY")
+
+        if not self.api_key:
+            return f"""
+import {{ Component }} from '@angular/core';
+@Component({{
+  selector: 'app-error',
+  standalone: true,
+  template: `<div class="p-10 bg-red-900/20 border border-red-500 rounded-2xl text-red-500 font-mono text-xs">
+    [ARCHITECT_FATAL_ERROR]: GROQ_API_KEY not found in system environment. 
+    Please verify your .env file in the backend directory.
+  </div>`
+}})
+export class ErrorComponent {{}}
+"""
 
         prompts = self.create_prompt(user_prompt, errors, prev_code)
         
