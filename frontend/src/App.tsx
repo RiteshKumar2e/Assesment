@@ -33,9 +33,14 @@ const App = () => {
             setResult(resultWithPrompt);
             setHistory(prev => [resultWithPrompt, ...prev].slice(0, 5));
             setPrompt('');
-            setActiveTab('code');
+            if (data.success) {
+                setActiveTab('preview');
+            } else {
+                setActiveTab('code');
+            }
         } catch (error) {
             console.error('Error:', error);
+            setActiveTab('code');
         } finally {
             setLoading(false);
         }
