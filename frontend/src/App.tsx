@@ -253,10 +253,11 @@ const App = () => {
                                                         Token Validated Render
                                                     </div>
                                                     <h3 className="text-lg font-black text-gray-900 leading-none truncate capitalize">
-                                                        {result.prompt?.includes('login') ? 'Secure Login System' :
-                                                            result.prompt?.includes('card') ? 'Interactive Feature Card' :
-                                                                result.prompt?.includes('nav') ? 'Global Navigation' :
-                                                                    'Standard UI Component'}
+                                                        {result.prompt?.toLowerCase().includes('login') ? 'Secure Portal' :
+                                                            result.prompt?.toLowerCase().includes('card') ? 'Interactive Profile' :
+                                                                result.prompt?.toLowerCase().includes('dashboard') ? 'System Analytics' :
+                                                                    result.prompt?.toLowerCase().includes('list') ? 'Data Infrastructure' :
+                                                                        'Component Architected'}
                                                     </h3>
                                                 </div>
 
@@ -264,49 +265,68 @@ const App = () => {
                                                 <div className="bg-[#0f172a] rounded-[32px] p-6 shadow-2xl border border-white/5 space-y-6">
                                                     {result.prompt?.toLowerCase().includes('login') ? (
                                                         <div className="space-y-4">
-                                                            <div className="h-8 w-8 bg-[#6366f1] rounded-lg mx-auto mb-4"></div>
-                                                            <div className="space-y-2">
-                                                                <div className="h-8 w-full bg-white/5 border border-white/10 rounded-md"></div>
-                                                                <div className="h-8 w-full bg-white/5 border border-white/10 rounded-md"></div>
+                                                            <div className="h-10 w-10 bg-[#6366f1] rounded-2xl mx-auto mb-6 shadow-xl rotate-3"></div>
+                                                            <div className="space-y-3">
+                                                                <div className="h-10 w-full bg-white/5 border border-white/10 rounded-xl"></div>
+                                                                <div className="h-10 w-full bg-white/5 border border-white/10 rounded-xl"></div>
                                                             </div>
-                                                            <div className="h-10 w-full bg-[#6366f1] rounded-md flex items-center justify-center">
-                                                                <span className="text-white font-bold text-xs">CONTINUE</span>
-                                                            </div>
-                                                            <div className="flex justify-between">
-                                                                <div className="h-2 w-16 bg-white/10 rounded"></div>
-                                                                <div className="h-2 w-16 bg-white/10 rounded"></div>
+                                                            <div className="h-12 w-full bg-[#6366f1] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                                                                <span className="text-white font-black text-xs tracking-widest">AUTHENTICATE</span>
                                                             </div>
                                                         </div>
                                                     ) : result.prompt?.toLowerCase().includes('card') ? (
-                                                        <div className="space-y-4">
-                                                            <div className="aspect-video w-full bg-white/5 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center">
-                                                                <svg className="w-12 h-12 text-white/10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                                </svg>
+                                                        <div className="space-y-5">
+                                                            <div className="aspect-[16/10] w-full bg-gradient-to-br from-[#6366f1]/20 to-purple-600/20 rounded-2xl border border-white/10 flex items-center justify-center">
+                                                                <svg className="w-14 h-14 text-[#6366f1]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                                             </div>
-                                                            <div className="space-y-2 text-center">
-                                                                <div className="h-4 w-3/4 bg-white/10 rounded mx-auto"></div>
-                                                                <div className="h-2 w-1/2 bg-white/5 rounded mx-auto"></div>
+                                                            <div className="space-y-2">
+                                                                <div className="h-4 w-2/3 bg-white/20 rounded-full"></div>
+                                                                <div className="h-2 w-full bg-white/5 rounded-full"></div>
+                                                                <div className="h-2 w-full bg-white/5 rounded-full"></div>
                                                             </div>
-                                                            <div className="h-10 w-full bg-[#a855f7] rounded-full flex items-center justify-center shadow-lg shadow-purple-900/40">
-                                                                <span className="text-white font-bold text-xs">VIEW DETAILS</span>
+                                                            <div className="flex justify-between items-center pt-2">
+                                                                <div className="h-6 w-16 bg-white/10 rounded-lg"></div>
+                                                                <div className="h-9 w-24 bg-white rounded-xl"></div>
+                                                            </div>
+                                                        </div>
+                                                    ) : result.prompt?.toLowerCase().includes('dashboard') ? (
+                                                        <div className="space-y-6">
+                                                            <div className="flex justify-between items-center">
+                                                                <div className="h-4 w-24 bg-white/20 rounded-full"></div>
+                                                                <div className="w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
+                                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-3 gap-3">
+                                                                {[1, 2, 3].map(i => (
+                                                                    <div key={i} className={`h-20 ${i === 2 ? 'bg-[#6366f1]' : 'bg-white/5'} rounded-2xl border border-white/10 p-3 space-y-2`}>
+                                                                        <div className="h-1.5 w-1/2 bg-white/10 rounded"></div>
+                                                                        <div className="h-4 w-full bg-white/20 rounded mt-auto"></div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div className="h-32 bg-white/5 border border-white/10 rounded-2xl flex items-end p-4 gap-2">
+                                                                {[40, 70, 50, 90, 60, 80].map((h, i) => (
+                                                                    <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-[#6366f1]/30 rounded-t-sm"></div>
+                                                                ))}
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-6 py-4">
                                                             <div className="flex items-center gap-4">
-                                                                <div className="w-10 h-10 rounded-full bg-[#f43f5e] shrink-0"></div>
-                                                                <div className="space-y-2 flex-1">
-                                                                    <div className="h-3 w-1/2 bg-white/10 rounded"></div>
-                                                                    <div className="h-2 w-full bg-white/5 rounded"></div>
+                                                                <div className="w-12 h-12 rounded-2xl bg-[#f43f5e] shrink-0 shadow-lg shadow-rose-500/20"></div>
+                                                                <div className="space-y-3 flex-1">
+                                                                    <div className="h-3 w-1/2 bg-white/20 rounded-full"></div>
+                                                                    <div className="h-2 w-full bg-white/5 rounded-full"></div>
                                                                 </div>
                                                             </div>
-                                                            <div className="h-px bg-white/5 w-full"></div>
-                                                            <div className="grid grid-cols-3 gap-2">
-                                                                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg border border-white/5"></div>)}
+                                                            <div className="h-px bg-white/10 w-full"></div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="h-24 bg-white/5 rounded-2xl border border-white/5"></div>
+                                                                <div className="h-24 bg-white/5 rounded-2xl border border-white/5"></div>
                                                             </div>
-                                                            <div className="h-10 w-full bg-white text-[#0f172a] rounded-lg font-black text-[10px] flex items-center justify-center tracking-widest uppercase">
-                                                                Interactive Layout Ready
+                                                            <div className="h-12 w-full bg-white text-[#0f172a] rounded-xl font-black text-[10px] flex items-center justify-center tracking-[0.3em] uppercase">
+                                                                SYSTEM_READY
                                                             </div>
                                                         </div>
                                                     )}
