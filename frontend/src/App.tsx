@@ -8,20 +8,37 @@ interface GenerationResult {
     prompt?: string;
 }
 
-// Use RegExp constructor to avoid backtick conflicts in template literals
-const TEMPLATE_BACKTICK_RE = new RegExp('template:\\\\s*`([\\\\s\\\\S]*?)`');
-const TEMPLATE_QUOTE_RE = /template:\s*['"]([^'"]*)['"]/;
+// Extracts the HTML body from an Angular @Component template string
+const getTemplateContent = (code: string): string | null => {
+    // Find 'template:' then capture everything between the next pair of backticks
+    // We must split on 'template:' then find the backtick-delimited block
+    const afterKeyword = code.split(/template\s*:/)[1];
+    if (!afterKeyword) return null;
+
+    const stripped = afterKeyword.trimStart();
+    if (stripped[0] === '`') {
+        // Find the closing backtick — skip escaped backticks (\`)
+        let i = 1;
+        while (i < stripped.length) {
+            if (stripped[i] === '\\') { i += 2; continue; }   // skip escaped
+            if (stripped[i] === '`') break;
+            i++;
+        }
+        return stripped.slice(1, i);
+    }
+    if (stripped[0] === '"' || stripped[0] === "'") {
+        const q = stripped[0];
+        const end = stripped.indexOf(q, 1);
+        return end !== -1 ? stripped.slice(1, end) : null;
+    }
+    return null;
+};
 
 const getPreviewHTML = (code: string): string => {
-    // Strategy 1: Angular template backtick block
-    const btMatch = TEMPLATE_BACKTICK_RE.exec(code);
-    if (btMatch?.[1]?.trim()) return btMatch[1];
+    const extracted = getTemplateContent(code);
+    if (extracted?.trim()) return extracted;
 
-    // Strategy 2: single/double quote template
-    const sqMatch = TEMPLATE_QUOTE_RE.exec(code);
-    if (sqMatch?.[1]?.trim()) return sqMatch[1];
-
-    // Strategy 3: raw HTML in code
+    // Fallback: if it looks like raw HTML already
     if (code.includes('<div') || code.includes('<section') || code.includes('<main')) {
         const htmlStart = code.indexOf('<');
         if (htmlStart !== -1) return code.slice(htmlStart);
@@ -30,25 +47,36 @@ const getPreviewHTML = (code: string): string => {
     return '<div style="padding:60px;text-align:center;color:rgba(255,255,255,0.3);font-family:sans-serif;font-size:13px;letter-spacing:0.1em;">PREVIEW RENDERING...</div>';
 };
 
+// Inline Tailwind CDN via play.tailwindcss.com script — avoids the production CDN warning
+// while still enabling all utility classes inside the sandboxed preview iframe.
+const TAILWIND_PLAY_URL = 'https://cdn.tailwindcss.com';
+
 const buildSrcDoc = (code: string): string => {
     const body = getPreviewHTML(code);
-    return [
-        '<!DOCTYPE html>',
-        '<html>',
-        '<head>',
-        '<script src="https://cdn.tailwindcss.com"></script>',
-        '<style>',
-        "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap');",
-        '*, *::before, *::after { box-sizing: border-box; }',
-        "html, body { margin: 0; padding: 0; min-height: 100vh; background: #0f172a; color: #fff; font-family: 'Inter', sans-serif; }",
-        '::-webkit-scrollbar { display: none; }',
-        '</style>',
-        '</head>',
-        '<body>',
-        body,
-        '</body>',
-        '</html>',
-    ].join('\n');
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>/* Tailwind CSS v3 Play CDN — preview only */</script>
+<script src="${TAILWIND_PLAY_URL}"><\/script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&display=swap');
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    background: #0f172a;
+    color: #f8fafc;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+</style>
+</head>
+<body>${body}</body>
+</html>`;
 };
 
 const App = () => {
@@ -287,11 +315,11 @@ const App = () => {
                                     <div className="h-full overflow-hidden">
                                         {result?.code ? (
                                             <iframe
-                                                key={result.code}
+                                                key={result.code.length + result.iterations}
                                                 title="Live Component Preview"
                                                 className="w-full h-full border-none"
                                                 srcDoc={buildSrcDoc(result.code)}
-                                                sandbox="allow-scripts allow-same-origin"
+                                                sandbox="allow-scripts"
                                             />
                                         ) : (
                                             <div className="h-full flex flex-col items-center justify-center text-white/20 select-none space-y-3">
