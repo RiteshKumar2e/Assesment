@@ -329,45 +329,47 @@ const App = () => {
 
                                 {/* Process Logs */}
                                 {activeTab === 'logs' && (() => {
+                                    const tagColor = (log: string): string => {
+                                        if (log.startsWith('[OK]') || log.startsWith('[OUTPUT]')) return '#4ade80';
+                                        if (log.startsWith('[ERROR]')) return '#f87171';
+                                        if (log.startsWith('[WARN]')) return '#fbbf24';
+                                        if (log.startsWith('[RETRY]')) return '#fb923c';
+                                        if (log.startsWith('[LINT]') && (log.includes('failed') || log.includes('violation') || log.includes('↳'))) return '#f87171';
+                                        if (log.startsWith('[LINT]') && log.includes('passed')) return '#4ade80';
+                                        if (log.startsWith('[LINT]')) return '#fb923c';
+                                        if (log.startsWith('[GROQ]')) return '#818cf8';
+                                        if (log.startsWith('[GEN]')) return '#818cf8';
+                                        if (log.startsWith('[DESIGN]')) return '#38bdf8';
+                                        if (log.startsWith('[INIT]')) return '#94a3b8';
+                                        return 'rgba(203,213,225,0.65)';
+                                    };
+
                                     const renderLog = (log: string, i: number) => {
-                                        const isPhase = log.startsWith('━━━');
-                                        const isEmpty = log.trim() === '';
-                                        const isSuccess = log.includes('ALL CHECKS PASSED') || log.includes('SUCCESS') || log.includes('✓');
-                                        const isError = log.includes('VIOLATION') || log.includes('FATAL') || log.includes('✗') || log.includes('[');
-                                        const isWarn = log.includes('SELF-CORRECTION') || log.includes('WARNING') || log.includes('Retrying');
-                                        const isInfo = log.includes('Model  :') || log.includes('model :') || log.includes('Groq');
-
-                                        if (isEmpty) return <div key={i} style={{ height: 6 }} />;
-
-                                        if (isPhase) {
-                                            const phaseNum = log.includes('PHASE 1') ? 1 : log.includes('PHASE 2') ? 2 : log.includes('PHASE 3') ? 3 : 4;
-                                            const phaseClr = ['#6366f1', '#0ea5e9', '#f59e0b', '#10b981'][phaseNum - 1] || '#6366f1';
-                                            const phaseText = log.replace(/━+\s*/g, '').trim();
-                                            return (
-                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0 8px' }}>
-                                                    <div style={{ width: 4, height: 16, borderRadius: 2, background: phaseClr, flexShrink: 0 }} />
-                                                    <span style={{ fontSize: 10, fontWeight: 700, color: phaseClr, letterSpacing: '0.12em', fontFamily: "'JetBrains Mono','Fira Code',monospace", textTransform: 'uppercase' }}>
-                                                        {phaseText}
-                                                    </span>
-                                                    <div style={{ flex: 1, height: 1, background: `${phaseClr}25` }} />
-                                                </div>
-                                            );
-                                        }
-
-                                        const color = isSuccess ? '#4ade80'
-                                            : isError ? '#f87171'
-                                                : isWarn ? '#fbbf24'
-                                                    : isInfo ? '#818cf8'
-                                                        : 'rgba(203,213,225,0.7)';
-
+                                        if (log.trim() === '') return <div key={i} style={{ height: 5 }} />;
+                                        const color = tagColor(log);
+                                        // Split tag from rest so tag is bold and rest is normal weight
+                                        const tagMatch = log.match(/^(\[[A-Z]+\])\s*(.*)/s);
                                         return (
-                                            <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 3, paddingLeft: 14 }}>
-                                                <span style={{ fontSize: 11.5, color, fontFamily: "'JetBrains Mono','Fira Code',monospace", lineHeight: 1.75, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                                                    {log}
-                                                </span>
+                                            <div key={i} style={{ display: 'flex', gap: 0, marginBottom: 5, paddingLeft: 4, alignItems: 'flex-start' }}>
+                                                {tagMatch ? (
+                                                    <>
+                                                        <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: "'JetBrains Mono','Fira Code',monospace", minWidth: 84, flexShrink: 0, lineHeight: 1.7 }}>
+                                                            {tagMatch[1]}
+                                                        </span>
+                                                        <span style={{ fontSize: 11.5, color: 'rgba(203,213,225,0.75)', fontFamily: "'JetBrains Mono','Fira Code',monospace", lineHeight: 1.7, wordBreak: 'break-word', flex: 1 }}>
+                                                            {tagMatch[2]}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span style={{ fontSize: 11.5, color, fontFamily: "'JetBrains Mono','Fira Code',monospace", lineHeight: 1.7, wordBreak: 'break-word' }}>
+                                                        {log}
+                                                    </span>
+                                                )}
                                             </div>
                                         );
                                     };
+
+
 
                                     return (
                                         <div style={{ padding: '4px 16px 16px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>

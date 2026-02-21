@@ -14,7 +14,7 @@ try:
 except ImportError:
     from agents import GeneratorAgent, ValidatorAgent
 
-app = FastAPI(title="Guided Component Architect API v2")
+app = FastAPI(title="Guided Component Architect API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,36 +53,26 @@ async def generate_component(request: GenerationRequest):
     used_model = "unknown"
     t_start = time.time()
 
-    short_prompt = request.prompt[:70] + ("..." if len(request.prompt) > 70 else "")
-    ds_name    = design_system.get("name", "Architect Design System")
-    ds_version = design_system.get("version", "3.0.0")
-    ds_theme   = design_system.get("theme", "light")
-    colors     = design_system.get("tokens", {}).get("colors", {})
-    rules      = design_system.get("rules", [])
+    colors  = design_system.get("tokens", {}).get("colors", {})
+    ds_ver  = design_system.get("version", "3.0.0")
+    short_p = request.prompt[:60] + ("..." if len(request.prompt) > 60 else "")
 
-    # ─── PHASE 1: Design System ───────────────────────────────────────────────
-    logs.append("━━━ PHASE 1 — DESIGN SYSTEM LOADING ━━━")
-    logs.append(f"  System : {ds_name} v{ds_version} ({ds_theme} theme)")
-    logs.append(f"  Tokens : {len(colors)} color tokens loaded")
-    logs.append(f"  Primary: {colors.get('primary', 'N/A')}  |  BG: {colors.get('background', 'N/A')}")
-    logs.append(f"  Rules  : {len(rules)} enforcement rule(s) injected into prompt")
-    logs.append(f"  Prompt : \"{short_prompt}\"")
-    logs.append(f"  Max Self-Correction Loops: {MAX_ATTEMPTS}")
+    logs.append(f'[INIT]      Agent initialized — prompt received')
+    logs.append(f'[INIT]      "{short_p}"')
+    logs.append(f'[DESIGN]    Loading design-system.json v{ds_ver}')
+    logs.append(f'[DESIGN]    primary={colors.get("primary","N/A")}  background={colors.get("background","N/A")}')
+    logs.append(f'[DESIGN]    Design tokens injected into LLM context')
 
     for attempt in range(MAX_ATTEMPTS):
 
-        # ─── PHASE 2: Generator ───────────────────────────────────────────────
-        phase_label = "INITIAL GENERATION" if attempt == 0 else f"SELF-CORRECTION — ATTEMPT #{attempt}"
-        logs.append(f"")
-        logs.append(f"━━━ PHASE 2 — GENERATOR [{attempt + 1}/{MAX_ATTEMPTS}] ━━━")
-        logs.append(f"  Action : {phase_label}")
         if attempt == 0:
-            logs.append(f"  Mode   : Constructing prompt with design system context")
-            logs.append(f"  Tech   : Angular 17+ standalone | Tailwind CSS | TypeScript")
+            logs.append(f'[GEN]       Building prompt — raw code output enforced, no filler')
+            logs.append(f'[GEN]       Stack: Angular 17+ standalone · Tailwind CSS · TypeScript')
+            logs.append(f'[GROQ]      Connecting to Groq API...')
         else:
-            logs.append(f"  Mode   : Re-prompting model with {len(errors or [])} validation error(s)")
-            logs.append(f"  Input  : Previous code + error context injected into prompt")
-        logs.append(f"  Groq   : Trying model cascade (10 models, best-first)...")
+            logs.append(f'[RETRY]     Self-correction triggered — {len(errors or [])} error(s) found')
+            logs.append(f'[RETRY]     Injecting validator error logs into correction prompt')
+            logs.append(f'[GROQ]      Re-calling Groq API with fix context...')
 
         try:
             current_code, used_model = await generator.generate(
@@ -91,41 +81,30 @@ async def generate_component(request: GenerationRequest):
                 errors,
             )
             elapsed = round(time.time() - t_start, 2)
-            logs.append(f"  Model  : {used_model}")
-            logs.append(f"  Output : {len(current_code):,} chars of TypeScript received ({elapsed}s)")
+            logs.append(f'[GROQ]      Response received — {len(current_code):,} chars ({elapsed}s)')
 
         except RuntimeError as e:
-            logs.append(f"")
-            logs.append(f"━━━ FATAL ERROR ━━━")
-            logs.append(f"  Groq API unreachable: {e}")
-            logs.append(f"  Action : Verify GROQ_API_KEY in backend/.env")
+            logs.append(f'[ERROR]     Groq API unreachable — {e}')
+            logs.append(f'[ERROR]     Verify GROQ_API_KEY in backend/.env')
             return GenerationResponse(
-                code=f"// GROQ API ERROR\n// {e}\n// Check your GROQ_API_KEY and network connectivity.",
+                code=f"// GROQ API ERROR\n// {e}",
                 iterations=attempt + 1,
                 logs=logs,
                 success=False,
                 model=None,
             )
 
-        # ─── PHASE 3: Validator (Linter-Agent) ───────────────────────────────
-        logs.append(f"")
-        logs.append(f"━━━ PHASE 3 — LINTER-AGENT (VALIDATOR) ━━━")
-        logs.append(f"  Check 1 of 3 : Syntax validation (brackets, decorators)...")
-        logs.append(f"  Check 2 of 3 : Design token compliance (hex color audit)...")
-        logs.append(f"  Check 3 of 3 : Angular standalone structure check...")
+        logs.append(f'[LINT]      Linter-Agent running validation checks...')
+        logs.append(f'[LINT]      Checking syntax: brackets {{}} [] () and @Component decorator')
+        logs.append(f'[LINT]      Checking design token compliance: hex colors vs JSON palette')
 
         result = validator.validate(current_code)
 
         if result["valid"]:
             elapsed = round(time.time() - t_start, 2)
-            logs.append(f"  Result : ✓ ALL CHECKS PASSED — 0 violations found")
-            logs.append(f"")
-            logs.append(f"━━━ PHASE 4 — COMPLETE ━━━")
-            logs.append(f"  Status    : SUCCESS")
-            logs.append(f"  Iteration : {attempt + 1} of {MAX_ATTEMPTS}")
-            logs.append(f"  Model     : {used_model}")
-            logs.append(f"  Time      : {elapsed}s total")
-            logs.append(f"  Component : standalone: true | Light theme | Tailwind CSS")
+            logs.append(f'[LINT]      All checks passed — 0 violations')
+            logs.append(f'[OK]        Component is valid and design-system compliant')
+            logs.append(f'[OUTPUT]    Completed in {attempt + 1} iteration(s) · {elapsed}s total')
             return GenerationResponse(
                 code=current_code,
                 iterations=attempt + 1,
@@ -133,27 +112,17 @@ async def generate_component(request: GenerationRequest):
                 success=True,
                 model=used_model,
             )
-        else:
-            errors = result["errors"]
-            logs.append(f"  Result : ✗ {len(errors)} VIOLATION(S) DETECTED")
-            for i, err in enumerate(errors, 1):
-                logs.append(f"    [{i}] {err}")
 
-            # ─── PHASE 4: Self-Correction ─────────────────────────────────────
-            if attempt < MAX_ATTEMPTS - 1:
-                logs.append(f"")
-                logs.append(f"━━━ PHASE 4 — SELF-CORRECTION LOOP ━━━")
-                logs.append(f"  Trigger  : Validation failed — {len(errors)} error(s) found")
-                logs.append(f"  Action   : Packaging error context for LLM feedback...")
-                logs.append(f"  Feedback : Error logs will be injected as correction prompt")
-                logs.append(f"  Next     : Retrying generation (attempt {attempt + 2} of {MAX_ATTEMPTS})...")
+        errors = result["errors"]
+        logs.append(f'[LINT]      Validation failed — {len(errors)} violation(s) detected')
+        for err in errors:
+            logs.append(f'[LINT]      ↳ {err}')
+
+        if attempt < MAX_ATTEMPTS - 1:
+            logs.append(f'[RETRY]     Preparing error context for self-correction loop...')
 
     elapsed = round(time.time() - t_start, 2)
-    logs.append(f"")
-    logs.append(f"━━━ PHASE 4 — COMPLETE (WITH WARNINGS) ━━━")
-    logs.append(f"  Status    : MAX ATTEMPTS REACHED")
-    logs.append(f"  Time      : {elapsed}s")
-    logs.append(f"  Note      : Returning best available output")
+    logs.append(f'[WARN]      Max attempts reached — returning best available output ({elapsed}s)')
     return GenerationResponse(
         code=current_code,
         iterations=MAX_ATTEMPTS,
