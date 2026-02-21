@@ -29,6 +29,7 @@ validator = ValidatorAgent(design_system)
 
 class GenerationRequest(BaseModel):
     prompt: str
+    prev_code: Optional[str] = None
 
 class GenerationResponse(BaseModel):
     code: str
@@ -44,8 +45,8 @@ async def generate_component(request: GenerationRequest):
     errors = None
     
     for i in range(max_retries):
-        logs.append(f"Iteration {i+1}: Generating code...")
-        current_code = generator.generate(request.prompt, current_code, errors)
+        logs.append(f"Iteration {i+1}: Generating/Updating code...")
+        current_code = generator.generate(request.prompt, request.prev_code or current_code, errors)
         
         logs.append(f"Iteration {i+1}: Validating code...")
         validation_result = validator.validate(current_code)
