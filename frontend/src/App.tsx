@@ -6,6 +6,7 @@ interface GenerationResult {
     logs: string[];
     success: boolean;
     prompt?: string;
+    model?: string;
 }
 
 // ─── Preview Engine ───────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ const buildSrcDoc = (code: string): string => {
 *,*::before,*::after{box-sizing:border-box}
 html,body{margin:0;padding:0;min-height:100vh;font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:99px}
-</style>
+<\/style>
 </head>
 <body>${body}</body>
 </html>`;
@@ -118,6 +119,15 @@ const App = () => {
 
     const statusColor = result?.success ? '#16a34a' : result ? '#d97706' : '#94a3b8';
     const statusLabel = result ? (result.success ? 'Verified' : 'Needs review') : 'Idle';
+
+    const logColor = (log: string): string => {
+        if (log.startsWith('[OK]') || log.startsWith('[OUTPUT]')) return '#16a34a';
+        if (log.startsWith('[ERROR]') || log.startsWith('[WARN]')) return '#dc2626';
+        if (log.startsWith('[LINT]') && log.includes('violation')) return '#d97706';
+        if (log.startsWith('[GROQ]') || log.startsWith('[GEN')) return '#4f46e5';
+        if (log.startsWith('[RETRY]')) return '#d97706';
+        return '#64748b';
+    };
 
     return (
         <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', sans-serif", color: '#0f172a' }}>
@@ -327,18 +337,36 @@ const App = () => {
 
                                 {/* Process Logs */}
                                 {activeTab === 'logs' && (
-                                    <div style={{ padding: '16px 20px' }}>
-                                        {result?.logs?.length ? result.logs.map((log, i) => (
-                                            <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 10, paddingLeft: 12, borderLeft: '2px solid rgba(79,70,229,0.3)' }}>
-                                                <span style={{ fontSize: 10, color: '#475569', flexShrink: 0, fontFamily: 'monospace' }}>
-                                                    [{String(i + 1).padStart(2, '0')}]
-                                                </span>
-                                                <span style={{ fontSize: 11, color: '#4f46e5', fontWeight: 700, flexShrink: 0, fontFamily: 'monospace' }}>AGENT →</span>
-                                                <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', lineHeight: 1.6 }}>{log}</span>
-                                            </div>
-                                        )) : (
-                                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#334155' }}>
-                                                <p style={{ fontSize: 13 }}>No logs yet. Run a generation.</p>
+                                    <div style={{ padding: '16px 20px', height: '100%', overflowY: 'auto' }}>
+                                        {result?.logs?.length ? (
+                                            <>
+                                                {result.logs.map((log, i) => (
+                                                    <div key={i} style={{ display: 'flex', gap: 0, marginBottom: 6 }}>
+                                                        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', flexShrink: 0, fontFamily: 'monospace', minWidth: 28, paddingTop: 1 }}>
+                                                            {String(i + 1).padStart(2, '0')}
+                                                        </span>
+                                                        <span style={{ fontSize: 11.5, color: logColor(log), fontFamily: "'JetBrains Mono','Fira Code',monospace", lineHeight: 1.7, wordBreak: 'break-word', flex: 1 }}>
+                                                            {log}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {loading && (
+                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, paddingLeft: 28 }}>
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }}>
+                                                            <circle cx="12" cy="12" r="10" stroke="rgba(79,70,229,0.3)" strokeWidth="3" fill="none" />
+                                                            <path d="M12 2a10 10 0 0 1 10 10" stroke="#4f46e5" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                                        </svg>
+                                                        <span style={{ fontSize: 11, color: '#4f46e5', fontFamily: 'monospace' }}>Groq model responding...</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'rgba(255,255,255,0.15)' }}>
+                                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2">
+                                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                                    <path d="M7 8h2m0 0v8m0-8h4a2 2 0 0 1 0 4H9" strokeLinecap="round" />
+                                                </svg>
+                                                <p style={{ fontSize: 12, margin: 0 }}>Logs will appear during generation</p>
                                             </div>
                                         )}
                                     </div>
@@ -371,7 +399,10 @@ const App = () => {
                         {/* Status bar */}
                         <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
                             <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                                {result ? `Design System v3.0 · ${result.iterations} iteration${result.iterations !== 1 ? 's' : ''}` : 'Powered by Groq LLaMA-3 · Design System v3.0'}
+                                {result?.model
+                                    ? `${result.model} · ${result.iterations} iteration${result.iterations !== 1 ? 's' : ''}`
+                                    : 'Groq LLaMA-3 Cascade · 10 models · Design System v3.0'
+                                }
                             </span>
                             {result && (
                                 <span style={{ fontSize: 11, fontWeight: 600, color: result.success ? '#16a34a' : '#d97706', display: 'flex', alignItems: 'center', gap: 5 }}>
