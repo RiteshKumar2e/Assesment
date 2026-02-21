@@ -9,13 +9,93 @@ interface GenerationResult {
     model?: string;
 }
 
-// ─── Preview Engine ───────────────────────────────────────────────────────────
+// ─── Advanced Preview Engine ─────────────────────────────────────────────────
+
+const extractClassProperties = (code: string): Record<string, string> => {
+    const props: Record<string, string> = {};
+    // Match: propName = 'value' or propName = "value" or propName = 123 or propName = true
+    const patterns = [
+        /(?:^|\n)\s+(\w+)\s*[:=]\s*['"]([^'"]{1,80})['"](?:\s*;|\s*$)/gm,
+        /(?:^|\n)\s+(\w+)\s*[:=]\s*(\d+(?:\.\d+)?)(?:\s*;|\s*$)/gm,
+        /(?:^|\n)\s+(\w+)\s*[:=]\s*(true|false)(?:\s*;|\s*$)/gm,
+    ];
+    for (const re of patterns) {
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(code)) !== null) {
+            const key = m[1];
+            if (!['selector', 'template', 'standalone', 'imports', 'providers', 'class', 'const', 'let', 'var', 'return', 'export', 'import', 'if', 'for', 'while'].includes(key)) {
+                props[key] = m[2];
+            }
+        }
+    }
+    // Also extract array items for *ngFor
+    const arrayRe = /(\w+)\s*[:=]\s*\[([^\]]{1,400})\]/gm;
+    let am: RegExpExecArray | null;
+    while ((am = arrayRe.exec(code)) !== null) {
+        props[`__array_${am[1]}`] = am[2];
+    }
+    return props;
+};
+
+const processAngularTemplate = (html: string, props: Record<string, string>): string => {
+    // 1. Replace {{ interpolations }}
+    html = html.replace(/\{\{\s*([\w\.\s\?!|]+?)\s*\}\}/g, (_m, expr) => {
+        const key = expr.trim().split('|')[0].trim().split('?')[0].trim();
+        return props[key] ?? (key.includes('.') ? key.split('.').pop() ?? '' : `<span class="preview-binding">${key}</span>`);
+    });
+
+    // 2. Handle *ngFor — repeat block 3 times with index-based mock data
+    html = html.replace(/<(\w+)[^>]*\*ngFor=['"]let (\w+) of (\w+)['"][^>]*>([\s\S]*?)<\/\1>/g,
+        (_m, tag, item, arr, inner) => {
+            const arrKey = `__array_${arr}`;
+            let items: string[] = [];
+            if (props[arrKey]) {
+                // parse array literal items
+                items = props[arrKey].split(',').map(s => s.trim().replace(/^['"]/, '').replace(/['"\s]$/, ''));
+            }
+            if (items.length === 0) items = ['Item 1', 'Item 2', 'Item 3'];
+            return items.map((val, idx) => {
+                let rep = inner.replace(new RegExp(`\\{\\{\\s*${item}\\s*\\}\\}`, 'g'), val);
+                rep = rep.replace(/\{\{\s*i\s*\}\}/g, String(idx + 1));
+                rep = rep.replace(/\{\{\s*index\s*\}\}/g, String(idx));
+                return `<${tag}>${rep}</${tag}>`;
+            }).join('\n');
+        });
+
+    // 3. Handle *ngIf — just show the element (assume truthy for preview)
+    html = html.replace(/\*ngIf=['"][^'"]*['"]/g, '');
+
+    // 4. Resolve [class.xxx]="expr" → add class
+    html = html.replace(/\[class\.([\w-]+)\]=['"][^'"]*['"]/g, (_m, cls) => `class="${cls}"`);
+
+    // 5. Resolve [attr]="expr" → use prop value or attr name
+    html = html.replace(/\[([\w-]+)\]="([^"]+)"/g, (_m, attr, expr) => {
+        const val = props[expr.trim()] ?? expr.trim();
+        return `${attr}="${val}"`;
+    });
+    html = html.replace(/\[([\w-]+)\]='([^']+)'/g, (_m, attr, expr) => {
+        const val = props[expr.trim()] ?? expr.trim();
+        return `${attr}="${val}"`;
+    });
+
+    // 6. Remove event bindings (click), (submit), etc.
+    html = html.replace(/\([\w.]+\)=['"][^'"]*['"]/g, '');
+
+    // 7. Strip Angular-specific attributes that browsers don't understand
+    html = html.replace(/\bng-[\w-]+=?['"][^'"]*['"]/g, '');
+    html = html.replace(/\[(ngModel|formControl|formControlName|routerLink)\]=['"][^'"]*['"]/g, '');
+    html = html.replace(/\(ngSubmit\)=['"][^'"]*['"]/g, '');
+
+    // 8. Remove Angular template refs
+    html = html.replace(/#\w+\b/g, '');
+
+    return html;
+};
 
 const getTemplateContent = (code: string): string | null => {
     const parts = code.split(/template\s*:/);
     if (parts.length < 2) return null;
     const after = parts[1].trimStart();
-
     if (after[0] === '`') {
         let i = 1;
         while (i < after.length) {
@@ -33,18 +113,13 @@ const getTemplateContent = (code: string): string | null => {
     return null;
 };
 
-const getPreviewHTML = (code: string): string => {
-    const extracted = getTemplateContent(code);
-    if (extracted?.trim()) return extracted;
-    if (code.includes('<div') || code.includes('<section')) {
-        const s = code.indexOf('<');
-        if (s !== -1) return code.slice(s);
-    }
-    return `<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#94a3b8;font-family:sans-serif;font-size:13px;letter-spacing:0.08em;">PREVIEW RENDERING...</div>`;
-};
-
 const buildSrcDoc = (code: string): string => {
-    const body = getPreviewHTML(code);
+    const raw = getTemplateContent(code) ?? '';
+    const props = extractClassProperties(code);
+    const body = raw.trim()
+        ? processAngularTemplate(raw, props)
+        : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:13px;">No template found</div>`;
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,15 +127,32 @@ const buildSrcDoc = (code: string): string => {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://cdn.tailwindcss.com"><\/script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 *,*::before,*::after{box-sizing:border-box}
-html,body{margin:0;padding:0;min-height:100vh;font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;-webkit-font-smoothing:antialiased}
-::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:99px}
+html{scroll-behavior:smooth}
+body{margin:0;padding:24px;min-height:100vh;font-family:'Inter',system-ui,sans-serif;background:#f8fafc;color:#0f172a;-webkit-font-smoothing:antialiased;line-height:1.6}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
+input,textarea,select{font-family:inherit;font-size:14px;outline:none;transition:border-color 0.15s,box-shadow 0.15s}
+input:focus,textarea:focus,select:focus{border-color:#4f46e5!important;box-shadow:0 0 0 3px rgba(79,70,229,0.12)!important}
+button{font-family:inherit;cursor:pointer;transition:all 0.15s ease}
+button:hover{filter:brightness(0.95)}
+button:active{transform:scale(0.97)}
+a{color:#4f46e5;text-decoration:none}
+a:hover{text-decoration:underline}
+.preview-binding{color:#4f46e5;background:#eef2ff;padding:0 2px;border-radius:3px;font-style:italic;font-size:0.9em}
+/* Card defaults */
+[class*="card"],[class*="Card"]{transition:box-shadow 0.2s,transform 0.2s}
+[class*="card"]:hover,[class*="Card"]:hover{transform:translateY(-1px)}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;padding:12px 16px;border-bottom:2px solid #e2e8f0}
+td{padding:12px 16px;border-bottom:1px solid #f1f5f9;font-size:14px}
+tr:hover td{background:#f8fafc}
 <\/style>
 </head>
 <body>${body}</body>
 </html>`;
 };
+
 
 // ─── App ───────────────────────────────────────────────────────────────────────
 
@@ -108,9 +200,9 @@ const App = () => {
 
     const handleExport = () => {
         if (!result?.code) return;
-        const blob = new Blob([result.code], { type: 'text/plain' });
+        const blob = new Blob([result.code], { type: 'text/typescript' });
         const url = URL.createObjectURL(blob);
-        const a = Object.assign(document.createElement('a'), { href: url, download: 'component.ts' });
+        const a = Object.assign(document.createElement('a'), { href: url, download: 'component.tsx' });
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -290,7 +382,7 @@ const App = () => {
                             {result?.code && activeTab === 'code' && (
                                 <button onClick={handleExport}
                                     style={{ fontSize: 12, fontWeight: 600, color: '#4f46e5', background: '#eef2ff', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit' }}>
-                                    Export .ts
+                                    Export .tsx
                                 </button>
                             )}
                         </div>
@@ -412,13 +504,27 @@ const App = () => {
                                 {/* Live Preview */}
                                 {activeTab === 'preview' && (
                                     result?.code ? (
-                                        <iframe
-                                            key={result.iterations + result.code.length}
-                                            title="Live Preview"
-                                            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-                                            srcDoc={buildSrcDoc(result.code)}
-                                            sandbox="allow-scripts"
-                                        />
+                                        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                                            {/* Mini browser chrome */}
+                                            <div style={{ background: '#f1f5f9', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+                                                <div style={{ display: 'flex', gap: 5 }}>
+                                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fca5a5' }} />
+                                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fcd34d' }} />
+                                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#86efac' }} />
+                                                </div>
+                                                <div style={{ flex: 1, background: '#fff', borderRadius: 6, padding: '3px 10px', fontSize: 10.5, color: '#94a3b8', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg>
+                                                    localhost:4200
+                                                </div>
+                                            </div>
+                                            <iframe
+                                                key={result.iterations + result.code.length}
+                                                title="Live Preview"
+                                                style={{ flex: 1, width: '100%', border: 'none', display: 'block' }}
+                                                srcDoc={buildSrcDoc(result.code)}
+                                                sandbox="allow-scripts"
+                                            />
+                                        </div>
                                     ) : (
                                         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: '#cbd5e1' }}>
                                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
