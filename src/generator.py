@@ -13,6 +13,7 @@ class GuidedArchitect:
         with open(tokens_path, 'r') as f:
             self.tokens = json.load(f)
         self.validator = CodeValidator(tokens_path)
+        self.history = [] # Stores (role, content) tuples
 
     def system_prompt(self):
         return f"""
@@ -50,16 +51,22 @@ Output format:
 
     def run_pipeline(self, user_prompt, llm_callback):
         """
-        llm_callback: a function that takes a prompt and returns LLM output string
+        llm_callback: a function that takes a list of messages and returns LLM output string
         """
-        current_prompt = self.system_prompt() + f"\nUser Request: {user_prompt}"
+        self.history.append({"role": "user", "content": user_prompt})
+        
+        # Prepare context with system prompt + history
+        messages = [
+            {"role": "system", "content": self.system_prompt()},
+            *self.history
+        ]
         
         for attempt in range(3):
             print(f"\n[Attempt {attempt + 1}] Generating code...")
-            generated_code = llm_callback(current_prompt)
+            generated_code = llm_callback(messages)
             
             # Extract code from markdown if present
-            code_match = re.search(r'```typescript\n(.*?)```', generated_code, re.DOTALL)
+            code_match = re.search(r'```(?:typescript|tsx|html)\n(.*?)```', generated_code, re.DOTALL)
             if code_match:
                 code_content = code_match.group(1)
             else:
@@ -70,11 +77,15 @@ Output format:
             
             if is_valid:
                 print("[+] Validation passed!")
+                self.history.append({"role": "assistant", "content": f"```typescript\n{code_content}\n```"})
                 return code_content
             else:
                 print(f"[-] Validation failed: {message}")
                 print("[*] Preparing self-correction prompt...")
-                current_prompt += f"\n\nERROR IN PREVIOUS OUTPUT:\n{message}\nPlease fix the errors and provide the corrected code."
+                # Correction doesn't go to history yet, it's part of the current turn's loop
+                correction_msg = {"role": "user", "content": f"ERROR IN PREVIOUS OUTPUT:\n{message}\nPlease fix the errors and provide the corrected code."}
+                messages.append({"role": "assistant", "content": generated_code})
+                messages.append(correction_msg)
                 
         print("[!] Max retries reached. Returning last generated code.")
         return code_content

@@ -1,0 +1,28 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "typeRoots": [
+            "./node_modules/@types"
+        ],
+        "lib": [
+            "ES2022",
+            "dom"
+        ],
+        "skipLibCheck": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "strict": true,
+        "baseUrl": "./",
+        "paths": {
+            "@angular/*": [
+                "./node_modules/@angular/*"
+            ]
+        }
+    },
+    "include": [
+        "output/**/*.ts",
+        "src/**/*.ts"
+    ]
+}
