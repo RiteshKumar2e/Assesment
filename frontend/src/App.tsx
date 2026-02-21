@@ -1,19 +1,26 @@
 import React, { useState } from 'react';
 
+interface GenerationResult {
+    code: string;
+    iterations: number;
+    logs: string[];
+    success: boolean;
+}
+
 const App = () => {
-    const [prompt, setPrompt] = useState('');
-    const [result, setResult] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [prompt, setPrompt] = useState<string>('');
+    const [result, setResult] = useState<GenerationResult | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
 
     const handleGenerate = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:8000/generate', {
+            const response = await fetch('http://localhost:8080/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt }),
             });
-            const data = await response.json();
+            const data: GenerationResult = await response.json();
             setResult(data);
         } catch (error) {
             console.error('Error:', error);
@@ -56,7 +63,7 @@ const App = () => {
                         <div className="relative bg-[#1e293b]/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
                             <textarea
                                 value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
                                 placeholder="e.g., A login card with glassmorphism effect and indigo primary buttons..."
                                 className="w-full h-48 bg-transparent border-none focus:ring-0 text-lg resize-none placeholder:text-white/20"
                             />
@@ -117,7 +124,7 @@ const App = () => {
                         </div>
                         {result?.logs && (
                             <div className="p-4 bg-black/40 border-t border-white/10 max-h-40 overflow-auto">
-                                {result.logs.map((log, i) => (
+                                {result.logs.map((log: string, i: number) => (
                                     <div key={i} className="text-[10px] font-mono text-white/40 flex gap-2">
                                         <span className="text-[#6366f1] shrink-0">[{new Date().toLocaleTimeString()}]</span>
                                         <span>{log}</span>
