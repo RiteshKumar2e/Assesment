@@ -2,7 +2,7 @@ import json
 import re
 import os
 import httpx
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,129 +23,240 @@ GROQ_MODELS = [
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+# ─── Recommended model settings from master prompt pack ───────────────────────
+TEMPERATURE  = 0.2
+TOP_P        = 0.9
+MAX_TOKENS   = 3000
+MAX_RETRIES  = 2          # validator retries before giving up
 
-# ─── Validator ────────────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VALIDATOR  (Deterministic — no LLM involved)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 class ValidatorAgent:
-    def __init__(self, design_system: Dict[str, Any]):
-        self.allowed_colors = [
-            c.lower()
-            for c in design_system.get("tokens", {}).get("colors", {}).values()
-            if isinstance(c, str) and c.startswith("#")
-        ]
+    """
+    Linter-Agent: deterministic validation only.
+    Checks per master prompt pack:
+      1. Design token compliance  (primary color, border-radius, font, glassBg)
+      2. Syntax sanity            (balanced brackets, Angular @Component, standalone)
+    """
+
+    PRIMARY_COLOR = "#6366f1"
+    BORDER_RADIUS = "8px"
+    FONT_FAMILY   = "Inter"
+    GLASS_BG      = "rgba(255,255,255,0.1)"
+
+    def __init__(self, design_system: Dict[str, Any] = None):
+        # Optionally override tokens from design_system JSON
+        if design_system:
+            colors = design_system.get("tokens", {}).get("colors", {})
+            self.PRIMARY_COLOR = colors.get("primary", self.PRIMARY_COLOR)
+            self.GLASS_BG      = colors.get("glassBg",  self.GLASS_BG)
+
 
     def validate(self, code: str) -> Dict[str, Any]:
         errors: List[str] = []
 
-        # Must be an Angular component
+        # ── 1. Angular structure ────────────────────────────────────────────
         if "@Component" not in code:
             errors.append("Missing @Component decorator — not a valid Angular component.")
 
-        # Must be standalone
         if "standalone: true" not in code:
-            errors.append("Component must declare standalone: true.")
+            errors.append("Component must declare `standalone: true`.")
 
-        # Bracket balance
+        # ── 2. Syntax sanity — bracket balance ─────────────────────────────
         if code.count("{") != code.count("}"):
-            errors.append("Unbalanced curly braces {}.")
-        if code.count("[") != code.count("]"):
-            errors.append("Unbalanced square brackets [].")
-        if code.count("(") != code.count(")"):
-            errors.append("Unbalanced parentheses ().")
+            errors.append(f"Unbalanced curly braces {{ }} ({code.count('{')} open, {code.count('}')} close).")
 
-        # Token compliance (soft) — only flag clearly wrong hex codes
-        hex_codes = re.findall(r'#[0-9a-fA-F]{6}', code)
-        for h in hex_codes:
-            if h.lower() not in self.allowed_colors:
-                errors.append(f"Unauthorized color '{h}' — use a design system token.")
-            if len(errors) >= 3:  # cap to avoid log spam
-                break
+        if code.count("[") != code.count("]"):
+            errors.append(f"Unbalanced square brackets [ ] ({code.count('[')} open, {code.count(']')} close).")
+
+        if code.count("(") != code.count(")"):
+            errors.append(f"Unbalanced parentheses ( ) ({code.count('(')} open, {code.count(')')} close).")
+
+        # ── 3. Design token — primary color ────────────────────────────────
+        # Must reference #6366f1 somewhere (bg, text, border etc.)
+        if self.PRIMARY_COLOR not in code and "indigo" not in code.lower() and "primary" not in code.lower():
+            errors.append(
+                f"Design token violation: primary color {self.PRIMARY_COLOR} not found. "
+                "Use #6366f1 or Tailwind `indigo-*` classes for CTAs and highlights."
+            )
+
+        # ── 4. Design token — border radius ────────────────────────────────
+        # Must reference rounded-* or 8px
+        has_radius = (
+            "rounded" in code or
+            self.BORDER_RADIUS in code or
+            "border-radius" in code
+        )
+        if not has_radius:
+            errors.append(
+                f"Design token violation: borderRadius '{self.BORDER_RADIUS}' not applied. "
+                "Use `rounded-lg` (Tailwind) or `border-radius: 8px`."
+            )
+
+        # ── 5. Design token — font family ──────────────────────────────────
+        if self.FONT_FAMILY not in code:
+            errors.append(
+                f"Design token violation: fontFamily '{self.FONT_FAMILY}' not referenced. "
+                "Ensure Inter is applied via CSS or class."
+            )
+
+        # ── 6. Closed HTML tags (basic check) ──────────────────────────────
+        unclosed = re.findall(r'<(?!br|hr|img|input|meta|link|!)\s*(\w+)[^>]*(?<!/)>', code)
+        closed   = re.findall(r'</(\w+)>', code)
+        open_set  = {}
+        for tag in unclosed:
+            open_set[tag] = open_set.get(tag, 0) + 1
+        for tag in closed:
+            if tag in open_set:
+                open_set[tag] -= 1
+        truly_unclosed = {t: c for t, c in open_set.items() if c > 0 and t not in ('br','hr','img','input','meta','link')}
+        if truly_unclosed:
+            # Only flag if it's a significant structural tag
+            structural = {t for t in truly_unclosed if t in ('div','section','article','main','header','footer','form','ul','ol','table','tr','td','th','span','p','h1','h2','h3','button','nav')}
+            if structural:
+                errors.append(f"Unclosed HTML tag(s): {', '.join(f'<{t}>' for t in structural)}.")
 
         return {"valid": len(errors) == 0, "errors": errors}
 
 
-# ─── Generator ────────────────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# GENERATOR  (LLM via Groq)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Exact system prompts from master prompt pack ──────────────────────────────
+
+GENERATOR_SYSTEM_PROMPT = """\
+You are a governed Angular component generation engine inside an automated agentic pipeline.
+Convert natural language UI requests into ONE production-ready Angular 17+ standalone component.
+
+━━━ ABSOLUTE OUTPUT RULES (VIOLATION = PIPELINE FAILURE) ━━━
+1.  Output RAW TypeScript ONLY. Zero markdown, zero prose, zero ``` fences.
+2.  Start the output with "import" — nothing before it.
+3.  The file must be a single self-contained Angular standalone component.
+4.  Include ALL necessary imports at the top.
+5.  Use @Component with: selector, standalone: true, imports: [...], template: `...`, styles: [`...`].
+6.  Template must be a backtick template literal — multi-line HTML inside.
+7.  All HTML tags must be properly opened and closed.
+8.  All TypeScript brackets { } [ ] ( ) must be balanced.
+9.  Do NOT use external stylesheet files — keep styles inside the styles array.
+10. Do NOT include constructor() unless needed.
+
+━━━ MANDATORY DESIGN TOKENS ━━━
+primary color  : #6366f1  (use for buttons, links, highlights, borders)
+border-radius  : 8px      (use rounded-lg in Tailwind = 8px)
+font-family    : Inter, sans-serif
+glass overlay  : rgba(255,255,255,0.1)
+background     : #ffffff or #f8fafc
+text           : #0f172a
+
+━━━ STYLING RULES ━━━
+- Use Tailwind CSS utility classes exclusively for layout, spacing, colors.
+- Map primary color via: bg-indigo-600, text-indigo-600, border-indigo-600, hover:bg-indigo-700.
+- Use rounded-lg (= 8px) on every button, input, card.
+- Apply font-sans class on the root wrapper for Inter font.
+- Add hover:, focus: and transition classes for interactivity.
+- Include realistic placeholder text — NOT lorem ipsum.
+- Every input must have a label, placeholder, and appropriate type.
+- Add at least ONE interactive element with visual feedback on hover/click.
+
+━━━ REQUIRED OUTPUT SKELETON ━━━
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+@Component({
+  selector: 'app-<kebab-name>',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="min-h-screen bg-gray-50 font-sans flex items-center justify-center p-6">
+      <!-- YOUR COMPONENT HTML HERE -->
+    </div>
+  `,
+  styles: [`
+    /* Inter font */
+    :host { font-family: 'Inter', sans-serif; display: block; }
+    /* custom styles if Tailwind is insufficient */
+  `]
+})
+export class <PascalName>Component {
+  // component properties and methods
+}
+
+Follow this skeleton exactly. Replace placeholders with the real implementation.\
+"""
+
+
+REPAIR_SYSTEM_PROMPT = """\
+You are a deterministic Angular code repair agent inside a governed pipeline.
+You will receive Angular code that FAILED automated validation. Fix every listed error.
+
+━━━ STRICT OUTPUT RULES ━━━
+1.  Output RAW TypeScript ONLY — no markdown, no prose, no ``` fences.
+2.  Start with "import" — nothing before it.
+3.  Preserve the @Component standalone structure.
+4.  Fix ALL errors listed in the validation report below.
+5.  All brackets { } [ ] ( ) must be balanced in the final output.
+6.  All HTML tags must be properly closed.
+
+━━━ MANDATORY DESIGN TOKENS (must appear in output) ━━━
+primary color : #6366f1  → Tailwind: indigo-600
+border-radius : 8px      → Tailwind: rounded-lg
+font-family   : Inter, sans-serif
+glass bg      : rgba(255,255,255,0.1)
+
+The corrected output must pass strict deterministic validation.\
+"""
+
+
 
 class GeneratorAgent:
     def __init__(self, design_system: Dict[str, Any]):
         self.design_system = design_system
         self.api_key: Optional[str] = os.getenv("GROQ_API_KEY")
 
-    # ── Prompt builders ───────────────────────────────────────────────────────
+    # ── Prompt builders (per master prompt pack templates) ────────────────────
 
-    def _ds(self) -> Dict[str, Any]:
-        return self.design_system.get("tokens", {})
+    def _generation_user_prompt(self, user_input: str) -> str:
+        """Runtime user prompt — injects the request into the master prompt template."""
+        return (
+            f"Generate an Angular standalone component for the following request:\n\n"
+            f"{user_input}\n\n"
+            f"REMINDER — your output must:\n"
+            f"  1. Start immediately with `import` (no preamble)\n"
+            f"  2. Contain @Component with standalone: true and an inline backtick template\n"
+            f"  3. Use bg-indigo-600 / text-indigo-600 for the primary color #6366f1\n"
+            f"  4. Use rounded-lg on every card, button, and input (borderRadius: 8px)\n"
+            f"  5. Include :host {{ font-family: 'Inter', sans-serif; }} in styles\n"
+            f"  6. Have realistic content — real labels, real placeholder text\n"
+            f"  7. Be a complete, self-contained file — no external imports or missing brackets"
+        )
 
-    def _system_prompt(self) -> str:
-        colors = self._ds().get("colors", {})
-        typo   = self._ds().get("typography", {})
-        rules  = self.design_system.get("rules", [])
+    def _repair_user_prompt(self, user_input: str, bad_code: str, errors: List[str]) -> str:
+        """Repair Agent user message — exact template from master prompt pack."""
+        error_block = "\n".join(f"  [{i+1}] {e}" for i, e in enumerate(errors))
+        return (
+            f"The previously generated Angular component failed deterministic validation.\n\n"
+            f"Original user request:\n  {user_input}\n\n"
+            f"Validation errors:\n{error_block}\n\n"
+            f"Previous (broken) code:\n{bad_code}\n\n"
+            f"Produce a fully corrected version.\n"
+            f"Output must start immediately with `import` — no preamble, no markdown fences.\n"
+            f"Fix every listed error. Ensure all design tokens are present in the output."
+        )
 
-        return f"""You are a world-class Angular 17+ architect. Generate ONE production-ready Angular standalone component.
 
-═══ DESIGN SYSTEM (LIGHT THEME) ═══
-Primary:         {colors.get('primary', '#4f46e5')}
-Primary Hover:   {colors.get('primaryHover', '#4338ca')}
-Primary Light:   {colors.get('primaryLight', '#eef2ff')}
-Background:      {colors.get('background', '#ffffff')}
-Background Alt:  {colors.get('backgroundAlt', '#f8fafc')}
-Surface:         {colors.get('surface', '#ffffff')}
-Border:          {colors.get('border', '#e2e8f0')}
-Text:            {colors.get('text', '#0f172a')}
-Text Secondary:  {colors.get('textSecondary', '#475569')}
-Text Muted:      {colors.get('textMuted', '#94a3b8')}
-Success:         {colors.get('success', '#16a34a')}
-Danger:          {colors.get('danger', '#dc2626')}
-Font:            {typo.get('fontFamily', 'Inter, sans-serif')}
+    # ── Groq call with model cascade ──────────────────────────────────────────
 
-═══ MANDATORY RULES ═══
-{chr(10).join(f'{i+1}. {r}' for i, r in enumerate(rules))}
-{len(rules)+1}. Output ONLY raw TypeScript. Zero markdown, zero prose, zero ``` fences.
-{len(rules)+2}. The template must start with a light background: bg-white or bg-gray-50.
-{len(rules)+3}. Every color value must come from the design token list above.
-{len(rules)+4}. Use Tailwind CSS classes exclusively — no inline style="" attributes.
-{len(rules)+5}. Add Angular animations, hover states, and focus rings for interactivity.
-{len(rules)+6}. Include realistic placeholder data — not "Lorem ipsum".
-
-═══ REQUIRED OUTPUT FORMAT ═══
-import {{ Component }} from '@angular/core';
-import {{ CommonModule }} from '@angular/common';
-
-@Component({{
-  selector: 'app-<kebab-case-name>',
-  standalone: true,
-  imports: [CommonModule, ...],
-  template: `<YOUR HTML HERE>`,
-}})
-export class <PascalCaseName>Component {{ ... }}"""
-
-    def _fix_prompt(self, original_prompt: str, prev_code: str, errors: List[str]) -> str:
-        return f"""Fix the following Angular component. Do not change the visual design — only repair the listed errors.
-
-ORIGINAL USER INTENT: {original_prompt}
-
-ERRORS TO FIX:
-{chr(10).join(f'  - {e}' for e in errors)}
-
-PREVIOUS CODE:
-{prev_code}
-
-Return ONLY the corrected TypeScript. No markdown fences, no explanations."""
-
-    # ── Groq call with model cascade ─────────────────────────────────────────
-
-    async def _call_groq(
-        self,
-        system: str,
-        user: str,
-        temp: float = 0.2,
-    ) -> tuple[str, str]:
-        """Try each model in cascade. Returns (output, model_used)."""
+    async def _call_groq(self, system: str, user: str) -> Tuple[str, str]:
+        """Try each model in cascade. Returns (cleaned_code, model_used)."""
         if not self.api_key:
             self.api_key = os.getenv("GROQ_API_KEY")
-
         if not self.api_key:
-            raise RuntimeError("GROQ_API_KEY is not set in .env")
+            raise RuntimeError("GROQ_API_KEY is not set in backend/.env")
 
         last_error = ""
         for model in GROQ_MODELS:
@@ -155,48 +266,64 @@ Return ONLY the corrected TypeScript. No markdown fences, no explanations."""
                         GROQ_URL,
                         headers={"Authorization": f"Bearer {self.api_key}"},
                         json={
-                            "model": model,
+                            "model":       model,
                             "messages": [
                                 {"role": "system", "content": system},
                                 {"role": "user",   "content": user},
                             ],
-                            "temperature": temp,
-                            "max_tokens": 3000,
+                            "temperature": TEMPERATURE,
+                            "top_p":       TOP_P,
+                            "max_tokens":  MAX_TOKENS,
                         },
                     )
                     response.raise_for_status()
-                    data = response.json()
-                    raw = data["choices"][0]["message"]["content"]
+                    raw = response.json()["choices"][0]["message"]["content"]
                     return self._clean(raw), model
 
             except httpx.HTTPStatusError as e:
                 last_error = f"{model} → HTTP {e.response.status_code}"
                 if e.response.status_code in (400, 404):
-                    continue          # model not available — try next
-                raise               # auth error etc — stop immediately
-
+                    continue       # model not available — try next
+                raise              # auth / rate-limit — stop
             except (httpx.ConnectError, httpx.TimeoutException) as e:
                 raise RuntimeError(f"Cannot reach Groq API: {e}") from e
-
             except Exception as e:
                 last_error = f"{model} → {e}"
                 continue
 
-        raise RuntimeError(f"All Groq models failed. Last error: {last_error}")
+        raise RuntimeError(f"All 10 Groq models failed. Last: {last_error}")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _clean(self, text: str) -> str:
-        """Strip markdown fences and leading prose."""
-        text = re.sub(r'^```[a-z]*\s*', '', text.strip(), flags=re.MULTILINE)
-        text = re.sub(r'```\s*$', '', text.strip(), flags=re.MULTILINE)
-        # Trim anything before the first `import` or `@Component`
-        for marker in ("import ", "@Component"):
+        """
+        Strip ALL markdown/prose wrapping from LLM output so the code starts
+        cleanly with `import` and ends at the last closing brace.
+        """
+        text = text.strip()
+
+        # 1. Remove opening fence: ```typescript, ```ts, ```angular, ``` etc.
+        text = re.sub(r'^```[a-zA-Z]*\s*\n?', '', text, flags=re.MULTILINE)
+
+        # 2. Remove closing fence
+        text = re.sub(r'\n?```\s*$', '', text, flags=re.MULTILINE)
+        text = re.sub(r'```', '', text)   # catch any stray fences
+
+        # 3. Find the real start — first 'import ' or '@Component'
+        start = len(text)
+        for marker in ("import ", "@Component", "import{", "import\n"):
             idx = text.find(marker)
-            if idx != -1:
-                text = text[idx:]
-                break
+            if idx != -1 and idx < start:
+                start = idx
+        text = text[start:]
+
+        # 4. Find the real end — last closing brace of the class
+        last_brace = text.rfind("}")
+        if last_brace != -1:
+            text = text[:last_brace + 1]
+
         return text.strip()
+
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -205,23 +332,18 @@ Return ONLY the corrected TypeScript. No markdown fences, no explanations."""
         user_prompt: str,
         prev_code: str = None,
         errors: List[str] = None,
-    ) -> tuple[str, str]:
-        """Returns (code, model_used)."""
-        system = self._system_prompt()
+    ) -> Tuple[str, str]:
+        """
+        Returns (code, model_used).
 
+        On first call  → uses Generator system prompt + generation user template.
+        On retry call  → uses Repair system prompt + repair user template.
+        """
         if errors and prev_code:
-            user = self._fix_prompt(user_prompt, prev_code, errors)
+            system = REPAIR_SYSTEM_PROMPT
+            user   = self._repair_user_prompt(user_prompt, prev_code, errors)
         else:
-            colors = self._ds().get("colors", {})
-            user = (
-                f'Generate a polished Angular component for: "{user_prompt}"\n\n'
-                f"Requirements:\n"
-                f"  • Light theme — white/gray-50 backgrounds only\n"
-                f"  • Primary color {colors.get('primary', '#4f46e5')} for CTAs and highlights\n"
-                f"  • Premium card layout with subtle shadow and border\n"
-                f"  • Smooth Tailwind transitions on hover/focus\n"
-                f"  • Realistic, contextually appropriate placeholder content\n"
-                f"  • At least one interactive element with a visual state"
-            )
+            system = GENERATOR_SYSTEM_PROMPT
+            user   = self._generation_user_prompt(user_prompt)
 
         return await self._call_groq(system, user)

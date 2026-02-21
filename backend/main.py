@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 try:
-    from .agents import GeneratorAgent, ValidatorAgent
+    from .agents import GeneratorAgent, ValidatorAgent, MAX_RETRIES
 except ImportError:
-    from agents import GeneratorAgent, ValidatorAgent
+    from agents import GeneratorAgent, ValidatorAgent, MAX_RETRIES
 
 app = FastAPI(title="Guided Component Architect API")
 
@@ -46,7 +46,6 @@ class GenerationResponse(BaseModel):
 
 @app.post("/generate", response_model=GenerationResponse)
 async def generate_component(request: GenerationRequest):
-    MAX_ATTEMPTS = 3
     current_code = ""
     errors: Optional[List[str]] = None
     logs: List[str] = []
@@ -60,19 +59,20 @@ async def generate_component(request: GenerationRequest):
     logs.append(f'[INIT]      Agent initialized — prompt received')
     logs.append(f'[INIT]      "{short_p}"')
     logs.append(f'[DESIGN]    Loading design-system.json v{ds_ver}')
-    logs.append(f'[DESIGN]    primary={colors.get("primary","N/A")}  background={colors.get("background","N/A")}')
-    logs.append(f'[DESIGN]    Design tokens injected into LLM context')
+    logs.append(f'[DESIGN]    primary={colors.get("primary","N/A")}  borderRadius=8px  font=Inter')
+    logs.append(f'[DESIGN]    glassBg={colors.get("glassBg","rgba(255,255,255,0.1)")}')
+    logs.append(f'[DESIGN]    {len(design_system.get("rules",[]))} governance rules injected into LLM context')
 
-    for attempt in range(MAX_ATTEMPTS):
+    for attempt in range(MAX_RETRIES + 1):  # 1 generation + MAX_RETRIES repair attempts
 
         if attempt == 0:
-            logs.append(f'[GEN]       Building prompt — raw code output enforced, no filler')
+            logs.append(f'[GEN]       Building prompt — Generator Agent (raw code output enforced)')
             logs.append(f'[GEN]       Stack: Angular 17+ standalone · Tailwind CSS · TypeScript')
-            logs.append(f'[GROQ]      Connecting to Groq API...')
+            logs.append(f'[GROQ]      Connecting to Groq API (10-model cascade, temp=0.2)...')
         else:
-            logs.append(f'[RETRY]     Self-correction triggered — {len(errors or [])} error(s) found')
-            logs.append(f'[RETRY]     Injecting validator error logs into correction prompt')
-            logs.append(f'[GROQ]      Re-calling Groq API with fix context...')
+            logs.append(f'[RETRY]     Self-correction triggered — Repair Agent activated')
+            logs.append(f'[RETRY]     Injecting {len(errors or [])} error(s) into repair prompt')
+            logs.append(f'[GROQ]      Re-calling Groq API with error context...')
 
         try:
             current_code, used_model = await generator.generate(
@@ -94,9 +94,11 @@ async def generate_component(request: GenerationRequest):
                 model=None,
             )
 
-        logs.append(f'[LINT]      Linter-Agent running validation checks...')
-        logs.append(f'[LINT]      Checking syntax: brackets {{}} [] () and @Component decorator')
-        logs.append(f'[LINT]      Checking design token compliance: hex colors vs JSON palette')
+        logs.append(f'[LINT]      Linter-Agent running deterministic validation...')
+        logs.append(f'[LINT]      [1/4] Syntax: brackets {{}} [] () · @Component · standalone: true')
+        logs.append(f'[LINT]      [2/4] Token: primaryColor #6366f1 present?')
+        logs.append(f'[LINT]      [3/4] Token: borderRadius 8px / rounded-* present?')
+        logs.append(f'[LINT]      [4/4] Token: fontFamily Inter · glassBg rgba check')
 
         result = validator.validate(current_code)
 
@@ -118,14 +120,14 @@ async def generate_component(request: GenerationRequest):
         for err in errors:
             logs.append(f'[LINT]      ↳ {err}')
 
-        if attempt < MAX_ATTEMPTS - 1:
+        if attempt < MAX_RETRIES:
             logs.append(f'[RETRY]     Preparing error context for self-correction loop...')
 
     elapsed = round(time.time() - t_start, 2)
-    logs.append(f'[WARN]      Max attempts reached — returning best available output ({elapsed}s)')
+    logs.append(f'[WARN]      Max retries ({MAX_RETRIES}) reached — returning best available output ({elapsed}s)')
     return GenerationResponse(
         code=current_code,
-        iterations=MAX_ATTEMPTS,
+        iterations=MAX_RETRIES + 1,
         logs=logs,
         success=False,
         model=used_model,

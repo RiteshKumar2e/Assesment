@@ -1,35 +1,43 @@
 {
-    "name": "Architect Design System",
+    "name": "Guided Component Architect — Design System",
     "version": "3.0.0",
     "theme": "light",
-    "description": "Production-grade light-theme design tokens. All generated Angular components MUST strictly follow these values.",
     "tokens": {
         "colors": {
-            "primary": "#4f46e5",
-            "primaryHover": "#4338ca",
+            "primary": "#6366f1",
+            "primaryHover": "#4f46e5",
             "primaryLight": "#eef2ff",
-            "primaryMid": "#c7d2fe",
-            "secondary": "#7c3aed",
-            "secondaryLight": "#ede9fe",
-            "accent": "#0ea5e9",
-            "accentLight": "#e0f2fe",
-            "success": "#16a34a",
-            "successLight": "#dcfce7",
-            "warning": "#d97706",
-            "warningLight": "#fef3c7",
-            "danger": "#dc2626",
-            "dangerLight": "#fee2e2",
             "background": "#ffffff",
             "backgroundAlt": "#f8fafc",
-            "backgroundMuted": "#f1f5f9",
             "surface": "#ffffff",
-            "surfaceHover": "#f8fafc",
             "border": "#e2e8f0",
-            "borderStrong": "#cbd5e1",
             "text": "#0f172a",
             "textSecondary": "#475569",
             "textMuted": "#94a3b8",
-            "textInverse": "#ffffff"
+            "success": "#16a34a",
+            "danger": "#dc2626",
+            "warning": "#d97706",
+            "glassBg": "rgba(255,255,255,0.1)"
+        },
+        "borderRadius": {
+            "default": "8px",
+            "sm": "4px",
+            "md": "8px",
+            "lg": "12px",
+            "xl": "16px",
+            "full": "9999px"
+        },
+        "typography": {
+            "fontFamily": "Inter, sans-serif",
+            "fontSizeSm": "12px",
+            "fontSizeBase": "14px",
+            "fontSizeMd": "16px",
+            "fontSizeLg": "20px",
+            "fontSizeXl": "24px",
+            "fontWeightNormal": 400,
+            "fontWeightMedium": 500,
+            "fontWeightSemibold": 600,
+            "fontWeightBold": 700
         },
         "spacing": {
             "1": "4px",
@@ -40,93 +48,54 @@
             "6": "24px",
             "8": "32px",
             "10": "40px",
-            "12": "48px",
-            "16": "64px",
-            "20": "80px"
-        },
-        "borderRadius": {
-            "sm": "6px",
-            "md": "10px",
-            "lg": "16px",
-            "xl": "24px",
-            "2xl": "32px",
-            "full": "9999px"
-        },
-        "typography": {
-            "fontFamily": "'Inter', ui-sans-serif, system-ui, sans-serif",
-            "fontFamilyMono": "'JetBrains Mono', 'Fira Code', ui-monospace, monospace",
-            "fontSize": {
-                "xs": "11px",
-                "sm": "13px",
-                "base": "15px",
-                "md": "17px",
-                "lg": "20px",
-                "xl": "24px",
-                "2xl": "30px",
-                "3xl": "38px",
-                "4xl": "48px"
-            },
-            "fontWeight": {
-                "normal": "400",
-                "medium": "500",
-                "semibold": "600",
-                "bold": "700",
-                "black": "900"
-            },
-            "lineHeight": {
-                "tight": "1.15",
-                "normal": "1.6",
-                "relaxed": "1.8"
-            }
+            "12": "48px"
         },
         "shadows": {
-            "xs": "0 1px 2px rgba(15, 23, 42, 0.06)",
-            "sm": "0 2px 8px rgba(15, 23, 42, 0.08)",
-            "md": "0 4px 20px rgba(15, 23, 42, 0.10)",
-            "lg": "0 12px 40px rgba(15, 23, 42, 0.12)",
-            "xl": "0 24px 64px rgba(15, 23, 42, 0.14)",
-            "primary": "0 4px 20px rgba(79, 70, 229, 0.25)",
-            "focus": "0 0 0 3px rgba(79, 70, 229, 0.20)"
-        },
-        "animation": {
-            "durationFast": "120ms",
-            "durationNormal": "240ms",
-            "durationSlow": "400ms",
-            "easingDefault": "cubic-bezier(0.4, 0, 0.2, 1)",
-            "easingSpring": "cubic-bezier(0.34, 1.56, 0.64, 1)"
+            "xs": "0 1px 2px rgba(15,23,42,0.06)",
+            "sm": "0 2px 8px rgba(15,23,42,0.08)",
+            "md": "0 4px 16px rgba(15,23,42,0.10)",
+            "lg": "0 8px 32px rgba(15,23,42,0.12)",
+            "xl": "0 16px 48px rgba(15,23,42,0.16)"
         },
         "components": {
             "button": {
-                "paddingX": "20px",
-                "paddingY": "12px",
-                "borderRadius": "10px",
-                "fontWeight": "600",
-                "fontSize": "14px"
+                "bg": "#6366f1",
+                "bgHover": "#4f46e5",
+                "text": "#ffffff",
+                "radius": "8px",
+                "padding": "10px 20px",
+                "fontWeight": 600
             },
             "input": {
-                "paddingX": "14px",
-                "paddingY": "12px",
-                "borderRadius": "10px",
-                "background": "#ffffff",
-                "border": "1.5px solid #e2e8f0",
-                "fontSize": "15px"
+                "border": "#e2e8f0",
+                "borderFocus": "#6366f1",
+                "radius": "8px",
+                "padding": "10px 14px",
+                "background": "#ffffff"
             },
             "card": {
-                "padding": "24px",
-                "borderRadius": "16px",
                 "background": "#ffffff",
-                "border": "1px solid #e2e8f0",
-                "shadow": "0 4px 20px rgba(15, 23, 42, 0.08)"
+                "border": "#e2e8f0",
+                "radius": "8px",
+                "shadow": "0 2px 8px rgba(15,23,42,0.08)"
             }
         }
     },
+    "glassmorphism": {
+        "background": "rgba(255,255,255,0.1)",
+        "backdropFilter": "blur(12px)",
+        "border": "1px solid rgba(255,255,255,0.2)"
+    },
     "rules": [
-        "Light theme ONLY — background must be white or light gray, never dark",
-        "All colors must match tokens from tokens.colors palette",
-        "Primary CTA buttons must use primary color #4f46e5",
-        "Typography must use tokens.typography.fontFamily",
-        "Components must be Angular standalone: true",
-        "Use Tailwind CSS utility classes for all layout and styling",
-        "All interactive elements must have hover and focus states"
+        "Use ONLY the design tokens defined in this JSON — do not introduce new colors, fonts, or radius values",
+        "primaryColor is #6366f1 — use exclusively for CTAs, highlights, and active states",
+        "borderRadius must be 8px for all interactive elements (buttons, inputs, cards)",
+        "fontFamily must be Inter, sans-serif — applied globally",
+        "glassBg rgba(255,255,255,0.1) is used for glassmorphism overlays only",
+        "All components must be Angular 17+ standalone with standalone: true",
+        "Use Tailwind CSS classes for layout — no raw inline style attributes",
+        "Ensure responsive layout behavior and accessible semantic HTML",
+        "All HTML tags must be properly closed and brackets balanced",
+        "Output must be syntactically valid TypeScript — no missing brackets or decorators"
     ]
 }
