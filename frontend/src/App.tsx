@@ -240,114 +240,34 @@ const App = () => {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center p-6 bg-white overflow-auto scrollbar-hide">
-                                        {result ? (
-                                            <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
-                                                <div className="mb-6 text-center">
-                                                    <div className="inline-flex items-center gap-2 px-2 py-1 rounded bg-green-50 text-green-600 text-[9px] font-bold uppercase tracking-tighter mb-2 border border-green-100">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                                        Token Validated Render
-                                                    </div>
-                                                    <h3 className="text-lg font-black text-gray-900 leading-none truncate capitalize">
-                                                        {result.prompt?.toLowerCase().includes('login') ? 'Secure Portal' :
-                                                            result.prompt?.toLowerCase().includes('card') ? 'Interactive Profile' :
-                                                                result.prompt?.toLowerCase().includes('dashboard') ? 'System Analytics' :
-                                                                    result.prompt?.toLowerCase().includes('list') ? 'Data Infrastructure' :
-                                                                        'Component Architected'}
-                                                    </h3>
-                                                </div>
-
-                                                {/* The "Live" Mockup */}
-                                                <div className="bg-[#0f172a] rounded-[32px] p-6 shadow-2xl border border-white/5 space-y-6">
-                                                    {result.prompt?.toLowerCase().includes('login') ? (
-                                                        <div className="space-y-4">
-                                                            <div className="h-10 w-10 bg-[#6366f1] rounded-2xl mx-auto mb-6 shadow-xl rotate-3"></div>
-                                                            <div className="space-y-3">
-                                                                <div className="h-10 w-full bg-white/5 border border-white/10 rounded-xl"></div>
-                                                                <div className="h-10 w-full bg-white/5 border border-white/10 rounded-xl"></div>
+                                    <div className="h-full bg-white overflow-hidden relative">
+                                        {result?.code ? (
+                                            <iframe
+                                                title="Component Preview"
+                                                className="w-full h-full border-none"
+                                                srcDoc={`
+                                                    <html>
+                                                        <head>
+                                                            <script src="https://cdn.tailwindcss.com"></script>
+                                                            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+                                                            <style>
+                                                                body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: transparent; }
+                                                                /* Hide scrollbars but keep functionality */
+                                                                ::-webkit-scrollbar { display: none; }
+                                                                * { scrollbar-width: none; }
+                                                            </style>
+                                                        </head>
+                                                        <body>
+                                                            <div id="render-root">
+                                                                ${(() => {
+                                                        const match = result.code.match(/template: `([\s\S]*?)`/);
+                                                        return match ? match[1] : '<div class="p-10 text-center text-gray-400">Unable to parse template</div>';
+                                                    })()}
                                                             </div>
-                                                            <div className="h-12 w-full bg-[#6366f1] rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                                                                <span className="text-white font-black text-xs tracking-widest">AUTHENTICATE</span>
-                                                            </div>
-                                                        </div>
-                                                    ) : result.prompt?.toLowerCase().includes('card') ? (
-                                                        <div className="space-y-5">
-                                                            <div className="aspect-[16/10] w-full bg-gradient-to-br from-[#6366f1]/20 to-purple-600/20 rounded-2xl border border-white/10 flex items-center justify-center">
-                                                                <svg className="w-14 h-14 text-[#6366f1]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <div className="h-4 w-2/3 bg-white/20 rounded-full"></div>
-                                                                <div className="h-2 w-full bg-white/5 rounded-full"></div>
-                                                                <div className="h-2 w-full bg-white/5 rounded-full"></div>
-                                                            </div>
-                                                            <div className="flex justify-between items-center pt-2">
-                                                                <div className="h-6 w-16 bg-white/10 rounded-lg"></div>
-                                                                <div className="h-9 w-24 bg-white rounded-xl"></div>
-                                                            </div>
-                                                        </div>
-                                                    ) : result.prompt?.toLowerCase().includes('dashboard') ? (
-                                                        <div className="space-y-6">
-                                                            <div className="flex justify-between items-center">
-                                                                <div className="h-4 w-24 bg-white/20 rounded-full"></div>
-                                                                <div className="w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
-                                                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="grid grid-cols-3 gap-3">
-                                                                {[1, 2, 3].map(i => (
-                                                                    <div key={i} className={`h-20 ${i === 2 ? 'bg-[#6366f1]' : 'bg-white/5'} rounded-2xl border border-white/10 p-3 space-y-2`}>
-                                                                        <div className="h-1.5 w-1/2 bg-white/10 rounded"></div>
-                                                                        <div className="h-4 w-full bg-white/20 rounded mt-auto"></div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                            <div className="h-32 bg-white/5 border border-white/10 rounded-2xl flex items-end p-4 gap-2">
-                                                                {[40, 70, 50, 90, 60, 80].map((h, i) => (
-                                                                    <div key={i} style={{ height: `${h}%` }} className="flex-1 bg-[#6366f1]/30 rounded-t-sm"></div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-8 py-8 px-4 text-center">
-                                                            <div className="inline-flex items-center gap-3 px-4 py-2 bg-[#6366f1]/10 border border-[#6366f1]/20 rounded-full">
-                                                                <span className="w-2 h-2 rounded-full bg-[#6366f1] animate-pulse"></span>
-                                                                <span className="text-[#6366f1] text-[10px] font-black uppercase tracking-widest">Active Render</span>
-                                                            </div>
-                                                            <div className="space-y-4">
-                                                                <h1 className="text-3xl font-black text-white leading-tight tracking-tighter">
-                                                                    {result.prompt}
-                                                                </h1>
-                                                                <div className="h-1 w-20 bg-[#6366f1] mx-auto rounded-full opacity-50"></div>
-                                                            </div>
-                                                            <p className="text-white/40 text-sm leading-relaxed max-w-xs mx-auto italic">
-                                                                Proprietary architecture generated via agentic loop iteration {result.iterations}.
-                                                            </p>
-                                                            <button className="w-full py-4 bg-white text-[#0f172a] font-black rounded-2xl text-[10px] tracking-[0.3em] uppercase transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-white/5">
-                                                                Initialize Instance
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Specs Footer */}
-                                                <div className="mt-8 grid grid-cols-3 gap-4">
-                                                    <div className="text-center">
-                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Theme</p>
-                                                        <div className="flex justify-center gap-1">
-                                                            <div className="w-3 h-3 rounded-full bg-[#6366f1]"></div>
-                                                            <div className="w-3 h-3 rounded-full bg-[#0f172a] border border-gray-200"></div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-center border-x border-gray-100">
-                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">State</p>
-                                                        <span className="text-[10px] font-bold text-green-600">Production</span>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Logic</p>
-                                                        <span className="text-[10px] font-bold text-gray-900">Standalone</span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                                        </body>
+                                                    </html>
+                                                `}
+                                            />
                                         ) : (
                                             <div className="h-full flex flex-col items-center justify-center text-gray-300 select-none space-y-4">
                                                 <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">

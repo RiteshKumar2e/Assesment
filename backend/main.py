@@ -41,21 +41,21 @@ class GenerationResponse(BaseModel):
 async def generate_component(request: GenerationRequest):
     max_retries = 3
     current_code = ""
-    logs = [f"🚀 Agent initialized with prompt: '{request.prompt[:50]}...'"]
+    logs = [f"INITIALIZE: Agent started with prompt: '{request.prompt[:50]}...'"]
     errors = None
     
     for i in range(max_retries):
         phase = "Initial Generation" if i == 0 else f"Self-Correction Loop (Attempt {i})"
-        logs.append(f"🧠 {phase}: Analyzing design system and constructing component architecture...")
+        logs.append(f"ANALYSIS: {phase}: Analyzing design system and constructing architecture...")
         
         current_code = generator.generate(request.prompt, request.prev_code or current_code, errors)
         
-        logs.append(f"🔍 Validation Phase: Linter-Agent scanning for design system violations...")
+        logs.append(f"VALIDATION: Linter-Agent scanning for design system violations...")
         validation_result = validator.validate(current_code)
         
         if validation_result["valid"]:
-            logs.append("✅ Validation Successful: Component complies with Design System v1.0")
-            logs.append(f"📦 Finalizing artifacts in {i+1} iterations.")
+            logs.append("SUCCESS: Validation passed. Component complies with Design System v1.0")
+            logs.append(f"COMPLETE: Finalizing artifacts in {i+1} iterations.")
             return GenerationResponse(
                 code=current_code,
                 iterations=i + 1,
@@ -64,8 +64,8 @@ async def generate_component(request: GenerationRequest):
             )
         else:
             errors = validation_result["errors"]
-            logs.append(f"❌ Violation Detected: {', '.join(errors)}")
-            logs.append("🔄 Feedback Loop: Redirecting error logs back to Generator Agent...")
+            logs.append(f"FAILURE: Violation detected: {', '.join(errors)}")
+            logs.append("RETRY: Feedback loop active. Redirecting error logs to agent...")
             
     return GenerationResponse(
         code=current_code,

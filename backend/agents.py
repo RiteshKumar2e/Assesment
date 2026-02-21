@@ -137,44 +137,89 @@ STRICT DESIGN SYSTEM ENFORCEMENT:
         bg = self.design_system.get("tokens", {}).get("colors", {}).get("background", "#0f172a")
 
         if errors:
-            # Context switch based on keywords
+            layout = ""
             if any(k in prompt_lower for k in ["login", "auth", "sign"]):
                 layout = f"""
-    <div class="min-h-screen bg-[{bg}] flex items-center justify-center p-6">
-      <div class="w-full max-w-sm p-10 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[24px] shadow-2xl">
-        <h2 class="text-3xl font-black text-white mb-2 tracking-tight">{user_prompt[:30]}</h2>
-        <p class="text-[{primary}] text-xs font-bold uppercase tracking-widest mb-8">Secure Session ID: {unique_id}</p>
+    <div class="flex items-center justify-center p-8 bg-[{bg}] min-h-[500px]">
+      <div class="w-full max-w-md p-8 bg-white/10 backdrop-blur-3xl border border-white/20 rounded-[30px] shadow-2xl">
+        <h2 class="text-3xl font-black text-white mb-2 leading-none">{user_prompt[:40]}</h2>
+        <p class="text-white/40 text-sm mb-8">Access Token: {unique_id}</p>
         <div class="space-y-4">
-          <input type="text" placeholder="Identity" class="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white">
-          <button class="w-full py-4 bg-[{primary}] text-white font-bold rounded-xl shadow-lg ring-offset-2 focus:ring-2">ACCESS</button>
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold text-white uppercase tracking-widest pl-1">Identifier</label>
+            <input type="text" placeholder="username" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-white/20 focus:border-[{primary}] transition-all outline-none">
+          </div>
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold text-white uppercase tracking-widest pl-1">Credentials</label>
+            <input type="password" placeholder="••••••••" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-white/20 focus:border-[{primary}] transition-all outline-none">
+          </div>
+          <button class="w-full py-4 bg-[{primary}] text-white font-black rounded-2xl shadow-xl shadow-[{primary}]/40 transition-transform active:scale-95 uppercase tracking-widest text-xs mt-4">
+            Initialize Access
+          </button>
         </div>
       </div>
     </div>"""
-            elif any(k in prompt_lower for k in ["dash", "stat", "monitor"]):
+            elif any(k in prompt_lower for k in ["dash", "stat", "monitor", "panel"]):
                 layout = f"""
-    <div class="p-10 bg-[{bg}] min-h-screen text-white">
-      <h1 class="text-4xl font-black mb-8">{user_prompt[:40]}</h1>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="p-6 bg-white/5 border border-white/10 rounded-3xl">
-          <span class="text-xs text-white/40 uppercase">Efficiency</span>
-          <div class="text-3xl font-mono mt-2 tracking-tighter">98.{unique_id[:2]}%</div>
+    <div class="p-8 bg-[{bg}] min-h-[500px]">
+      <header class="mb-10 flex justify-between items-end">
+        <div>
+          <h1 class="text-4xl font-black text-white tracking-tighter">{user_prompt[:40]}</h1>
+          <p class="text-[{primary}] font-mono text-xs mt-1 uppercase">Instance Node: {unique_id}</p>
         </div>
-        <div class="p-6 bg-[{primary}] rounded-3xl">
-          <span class="text-xs text-white/60 uppercase">Active Threads</span>
-          <div class="text-3xl font-mono mt-2 tracking-tighter">{unique_id}</div>
+        <div class="px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full text-green-500 text-[10px] font-black uppercase tracking-widest">System Stable</div>
+      </header>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-6 bg-white/5 border border-white/10 rounded-3xl hover:border-white/20 transition-all">
+          <span class="text-[10px] font-bold text-white/40 uppercase tracking-widest">Network Load</span>
+          <div class="text-3xl font-black text-white mt-4">{unique_id[:2]}%</div>
+          <div class="h-1 w-full bg-white/10 rounded-full mt-4"><div class="h-full bg-[{primary}] rounded-full" style="width: {unique_id[:2]}%"></div></div>
+        </div>
+        <div class="p-6 bg-white/5 border border-white/10 rounded-3xl hover:border-white/20 transition-all">
+          <span class="text-[10px] font-bold text-white/40 uppercase tracking-widest">Throughput</span>
+          <div class="text-3xl font-black text-white mt-4 font-mono">{unique_id}k</div>
+        </div>
+        <div class="p-6 bg-[{primary}] rounded-3xl shadow-2xl shadow-[{primary}]/30">
+          <span class="text-[10px] font-bold text-white/70 uppercase tracking-widest">Optimized</span>
+          <div class="text-3xl font-black text-white mt-4">ACTIVE</div>
+        </div>
+      </div>
+    </div>"""
+            elif any(k in prompt_lower for k in ["card", "profile", "unit"]):
+                layout = f"""
+    <div class="flex items-center justify-center p-8 bg-[{bg}] min-h-[500px]">
+      <div class="w-full max-w-sm overflow-hidden bg-white/5 border border-white/10 rounded-[40px] shadow-2xl group transition-all hover:border-[{primary}]/40">
+        <div class="h-48 bg-gradient-to-br from-[{primary}] to-indigo-900 flex items-center justify-center relative">
+          <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+          <div class="w-24 h-24 bg-white/20 backdrop-blur-md rounded-full border border-white/30 flex items-center justify-center shadow-2xl">
+            <span class="text-4xl">🚀</span>
+          </div>
+        </div>
+        <div class="p-10 text-center">
+          <h3 class="text-2xl font-black text-white mb-2 tracking-tight">{user_prompt[:30]}</h3>
+          <p class="text-white/50 text-sm leading-relaxed mb-8">Generated artifact for unique sequence {unique_id}. Validated and production ready.</p>
+          <div class="flex gap-4">
+            <button class="flex-1 py-4 bg-[{primary}] text-white font-black rounded-2xl text-[10px] tracking-widest shadow-xl shadow-[{primary}]/30">VIEW DETAILS</button>
+            <button class="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-white hover:bg-white/10 transition-all">
+               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>"""
             else:
                 layout = f"""
-    <div class="min-h-screen bg-[{bg}] flex items-center justify-center p-12">
-      <div class="max-w-2xl text-center">
-        <div class="inline-block px-4 py-1 bg-[{primary}]/20 border border-[{primary}]/30 rounded-full text-[{primary}] text-[10px] font-bold mb-6">
-           INSTANCE_{unique_id}
+    <div class="min-h-screen bg-[{bg}] flex items-center justify-center p-12 text-center">
+      <div class="max-w-xl">
+        <div class="inline-flex items-center gap-3 px-6 py-2 bg-white/5 border border-white/10 rounded-full mb-8">
+          <span class="w-2 h-2 rounded-full bg-[{primary}] animate-ping"></span>
+          <span class="text-white/60 text-[10px] font-black uppercase tracking-[0.3em]">Module {unique_id} Active</span>
         </div>
-        <h1 class="text-5xl font-black text-white leading-none mb-6">{user_prompt}</h1>
-        <div class="h-2 w-24 bg-[{primary}] mx-auto mb-8"></div>
-        <button class="px-8 py-4 bg-[{primary}] text-white font-black rounded-full shadow-2xl shadow-[{primary}]/30">INITIALIZE</button>
+        <h1 class="text-6xl font-black text-white tracking-tighter leading-none mb-6">{user_prompt}</h1>
+        <p class="text-white/40 text-lg leading-relaxed mb-10">Contextual architecture constructed using Groq low-latency inference. Standardized for Design System tokens.</p>
+        <button class="px-10 py-5 bg-[{primary}] text-white font-black rounded-2xl shadow-2xl shadow-[{primary}]/40 uppercase tracking-widest text-xs hover:translate-y-[-4px] transition-all active:translate-y-0">
+          Execute Initialization
+        </button>
       </div>
     </div>"""
 
