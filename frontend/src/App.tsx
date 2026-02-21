@@ -153,8 +153,8 @@ const App = () => {
                 </div>
             </header>
 
-            <main style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 24px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 32, alignItems: 'start' }}>
+            <main style={{ maxWidth: 1440, margin: '0 auto', padding: '40px 24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
 
                     {/* ── Left Panel ── */}
                     <div className="left-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: 700, overflowY: 'auto', paddingRight: 4 }}>
