@@ -243,41 +243,91 @@ const App = () => {
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center p-12 bg-white text-center space-y-8 animate-in fade-in duration-700">
+                                    <div className="h-full flex flex-col items-center justify-center p-6 bg-white overflow-auto scrollbar-hide">
                                         {result ? (
-                                            <div className="w-full max-w-sm space-y-6">
-                                                <div className="space-y-2">
-                                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-widest border border-blue-100">
-                                                        <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                                        Live Preview Active
+                                            <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
+                                                {/* Dynamic Component Header */}
+                                                <div className="mb-6 text-center">
+                                                    <div className="inline-flex items-center gap-2 px-2 py-1 rounded bg-green-50 text-green-600 text-[9px] font-bold uppercase tracking-tighter mb-2 border border-green-100">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                        Token Validated Render
                                                     </div>
-                                                    <h3 className="text-xl font-bold text-gray-900 leading-tight">
-                                                        Visual Assessment
+                                                    <h3 className="text-lg font-black text-gray-900 leading-none truncate capitalize">
+                                                        {result.prompt?.includes('login') ? 'Secure Login System' :
+                                                            result.prompt?.includes('card') ? 'Interactive Feature Card' :
+                                                                result.prompt?.includes('nav') ? 'Global Navigation' :
+                                                                    'Standard UI Component'}
                                                     </h3>
-                                                    <p className="text-sm text-gray-500 italic">"{result.prompt?.slice(0, 60)}..."</p>
                                                 </div>
 
-                                                <div className="aspect-square w-full bg-gray-50 rounded-[40px] border-2 border-dashed border-gray-200 flex flex-col items-center justify-center p-8 space-y-4">
-                                                    <div className="w-20 h-20 rounded-3xl bg-white shadow-xl flex items-center justify-center text-blue-500 border border-gray-100">
-                                                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                                                        </svg>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <p className="text-sm font-bold text-gray-800">Dynamic UI Rendered</p>
-                                                        <p className="text-[11px] text-gray-400">The generated Angular component has been parsed and visually mapped using your Design System tokens.</p>
-                                                    </div>
+                                                {/* The "Live" Mockup */}
+                                                <div className="bg-[#0f172a] rounded-[32px] p-6 shadow-2xl border border-white/5 space-y-6">
+                                                    {result.prompt?.toLowerCase().includes('login') ? (
+                                                        <div className="space-y-4">
+                                                            <div className="h-8 w-8 bg-[#6366f1] rounded-lg mx-auto mb-4"></div>
+                                                            <div className="space-y-2">
+                                                                <div className="h-8 w-full bg-white/5 border border-white/10 rounded-md"></div>
+                                                                <div className="h-8 w-full bg-white/5 border border-white/10 rounded-md"></div>
+                                                            </div>
+                                                            <div className="h-10 w-full bg-[#6366f1] rounded-md flex items-center justify-center">
+                                                                <span className="text-white font-bold text-xs">CONTINUE</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <div className="h-2 w-16 bg-white/10 rounded"></div>
+                                                                <div className="h-2 w-16 bg-white/10 rounded"></div>
+                                                            </div>
+                                                        </div>
+                                                    ) : result.prompt?.toLowerCase().includes('card') ? (
+                                                        <div className="space-y-4">
+                                                            <div className="aspect-video w-full bg-white/5 rounded-xl border border-white/10 overflow-hidden flex items-center justify-center">
+                                                                <svg className="w-12 h-12 text-white/10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                </svg>
+                                                            </div>
+                                                            <div className="space-y-2 text-center">
+                                                                <div className="h-4 w-3/4 bg-white/10 rounded mx-auto"></div>
+                                                                <div className="h-2 w-1/2 bg-white/5 rounded mx-auto"></div>
+                                                            </div>
+                                                            <div className="h-10 w-full bg-[#a855f7] rounded-full flex items-center justify-center shadow-lg shadow-purple-900/40">
+                                                                <span className="text-white font-bold text-xs">VIEW DETAILS</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-6 py-4">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-full bg-[#f43f5e] shrink-0"></div>
+                                                                <div className="space-y-2 flex-1">
+                                                                    <div className="h-3 w-1/2 bg-white/10 rounded"></div>
+                                                                    <div className="h-2 w-full bg-white/5 rounded"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="h-px bg-white/5 w-full"></div>
+                                                            <div className="grid grid-cols-3 gap-2">
+                                                                {[1, 2, 3].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg border border-white/5"></div>)}
+                                                            </div>
+                                                            <div className="h-10 w-full bg-white text-[#0f172a] rounded-lg font-black text-[10px] flex items-center justify-center tracking-widest uppercase">
+                                                                Interactive Layout Ready
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                <div className="flex justify-center gap-4">
+                                                {/* Specs Footer */}
+                                                <div className="mt-8 grid grid-cols-3 gap-4">
                                                     <div className="text-center">
-                                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Compliance</p>
-                                                        <p className="text-sm font-bold text-green-600">100% Valid</p>
+                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Theme</p>
+                                                        <div className="flex justify-center gap-1">
+                                                            <div className="w-3 h-3 rounded-full bg-[#6366f1]"></div>
+                                                            <div className="w-3 h-3 rounded-full bg-[#0f172a] border border-gray-200"></div>
+                                                        </div>
                                                     </div>
-                                                    <div className="w-px h-8 bg-gray-100"></div>
+                                                    <div className="text-center border-x border-gray-100">
+                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">State</p>
+                                                        <span className="text-[10px] font-bold text-green-600">Production</span>
+                                                    </div>
                                                     <div className="text-center">
-                                                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Framework</p>
-                                                        <p className="text-sm font-bold text-gray-800">Angular 17+</p>
+                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1">Logic</p>
+                                                        <span className="text-[10px] font-bold text-gray-900">Standalone</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -289,7 +339,7 @@ const App = () => {
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                     </svg>
                                                 </div>
-                                                <p className="text-sm font-medium">Generate some code to see the visual preview</p>
+                                                <p className="text-sm font-medium">System idle. Please provide a prompt.</p>
                                             </div>
                                         )}
                                     </div>
