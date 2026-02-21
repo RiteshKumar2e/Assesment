@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface GenerationResult {
     code: string;
@@ -167,8 +167,29 @@ const App = () => {
     const [prompt, setPrompt] = useState('');
     const [result, setResult] = useState<GenerationResult | null>(null);
     const [loading, setLoading] = useState(false);
-    const [history, setHistory] = useState<GenerationResult[]>([]);
     const [activeTab, setActiveTab] = useState<'code' | 'logs' | 'preview'>('code');
+
+    // ── Persistent history via localStorage ──────────────────────────────────
+    const [history, setHistory] = useState<GenerationResult[]>(() => {
+        try {
+            const saved = localStorage.getItem('architect_history');
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
+
+    useEffect(() => {
+        try { localStorage.setItem('architect_history', JSON.stringify(history)); }
+        catch { /* storage quota exceeded — ignore */ }
+    }, [history]);
+
+    const clearHistory = () => {
+        setHistory([]);
+        localStorage.removeItem('architect_history');
+    };
+
+    const deleteHistoryItem = (index: number) => {
+        setHistory(prev => prev.filter((_, i) => i !== index));
+    };
 
     const handleGenerate = async () => {
         if (!prompt.trim()) return;
@@ -249,7 +270,7 @@ const App = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
 
                     {/* ── Left Panel ── */}
-                    <div className="left-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: 700, overflowY: 'auto', paddingRight: 4 }}>
+                    <div className="left-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: 760, overflowY: 'auto', paddingRight: 4 }}>
 
                         {/* Hero text */}
                         <div>
@@ -302,8 +323,8 @@ const App = () => {
                             </div>
                         </div>
 
-                        {/* Example prompts */}
-                        {!result && (
+                        {/* Example prompts — only when no history and no result */}
+                        {!result && history.length === 0 && (
                             <div>
                                 <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Try an example</p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -325,34 +346,65 @@ const App = () => {
                             </div>
                         )}
 
-                        {/* Stats */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div style={{ background: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '16px 18px', boxShadow: '0 1px 4px rgba(15,23,42,0.05)' }}>
-                                <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>Iterations</p>
-                                <p style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.04em' }}>{result?.iterations ?? 0}</p>
+                        {/* Stats — only show when there's an actual result */}
+                        {result && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div style={{ background: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '16px 18px', boxShadow: '0 1px 4px rgba(15,23,42,0.05)' }}>
+                                    <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>Iterations</p>
+                                    <p style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.04em' }}>{result?.iterations ?? 0}</p>
+                                </div>
+                                <div style={{ background: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '16px 18px', boxShadow: '0 1px 4px rgba(15,23,42,0.05)' }}>
+                                    <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>Status</p>
+                                    <p style={{ fontSize: 16, fontWeight: 700, color: statusColor, margin: 0 }}>{statusLabel}</p>
+                                </div>
                             </div>
-                            <div style={{ background: '#ffffff', borderRadius: 14, border: '1px solid #e2e8f0', padding: '16px 18px', boxShadow: '0 1px 4px rgba(15,23,42,0.05)' }}>
-                                <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 6px' }}>Status</p>
-                                <p style={{ fontSize: 16, fontWeight: 700, color: statusColor, margin: 0 }}>{statusLabel}</p>
-                            </div>
-                        </div>
+                        )}
 
                         {/* History */}
                         {history.length > 0 && (
                             <div>
-                                <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>History</p>
+                                {/* Header row */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                    <p style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>History ({history.length})</p>
+                                    <button
+                                        onClick={clearHistory}
+                                        style={{ fontSize: 11, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: '2px 6px', borderRadius: 5, fontFamily: 'inherit' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                    >Clear All</button>
+                                </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                                     {history.map((h, i) => (
-                                        <button key={i} onClick={() => { setResult(h); setActiveTab('preview'); }}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-                                                borderRadius: 10, cursor: 'pointer', border: `1px solid ${result === h ? '#c7d2fe' : '#e2e8f0'}`,
-                                                background: result === h ? '#eef2ff' : '#ffffff', fontFamily: 'inherit', textAlign: 'left',
-                                                transition: 'all 0.12s ease'
-                                            }}>
-                                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: h.success ? '#16a34a' : '#f59e0b', flexShrink: 0 }} />
-                                            <span style={{ fontSize: 12, color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.prompt}</span>
-                                        </button>
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <button
+                                                onClick={() => { setResult(h); setActiveTab('preview'); }}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                                                    borderRadius: 10, cursor: 'pointer', flex: 1, minWidth: 0,
+                                                    border: `1px solid ${result === h ? '#c7d2fe' : '#e2e8f0'}`,
+                                                    background: result === h ? '#eef2ff' : '#ffffff', fontFamily: 'inherit', textAlign: 'left',
+                                                    transition: 'all 0.12s ease'
+                                                }}
+                                                onMouseEnter={e => { if (result !== h) { e.currentTarget.style.borderColor = '#c7d2fe'; e.currentTarget.style.background = '#f5f3ff'; } }}
+                                                onMouseLeave={e => { if (result !== h) { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#ffffff'; } }}
+                                            >
+                                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: h.success ? '#16a34a' : '#f59e0b', flexShrink: 0 }} />
+                                                <span style={{ fontSize: 12, color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.prompt}</span>
+                                            </button>
+                                            {/* Per-item delete */}
+                                            <button
+                                                onClick={() => deleteHistoryItem(i)}
+                                                title="Remove"
+                                                style={{
+                                                    flexShrink: 0, width: 26, height: 26, borderRadius: 7, border: '1px solid #e2e8f0',
+                                                    background: '#ffffff', color: '#94a3b8', cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 13, lineHeight: 1, fontFamily: 'inherit', transition: 'all 0.12s'
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.color = '#ef4444'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#94a3b8'; }}
+                                            >✕</button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
