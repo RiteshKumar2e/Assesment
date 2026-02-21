@@ -155,7 +155,7 @@ const App = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 32, alignItems: 'start' }}>
 
                     {/* ── Left Panel ── */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <div className="left-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: 700, overflowY: 'auto', paddingRight: 4 }}>
 
                         {/* Hero text */}
                         <div>
@@ -388,6 +388,10 @@ const App = () => {
                 @keyframes spin { to { transform: rotate(360deg); } }
                 * { box-sizing: border-box; }
                 textarea::placeholder { color: #94a3b8; }
+                textarea { outline: none; }
+                /* Hide scrollbar on left panel but keep it scrollable */
+                .left-panel::-webkit-scrollbar { display: none; }
+                .left-panel { scrollbar-width: none; -ms-overflow-style: none; }
             `}</style>
         </div>
     );
