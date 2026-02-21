@@ -12,8 +12,11 @@ const App = () => {
     const [result, setResult] = useState<GenerationResult | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
 
+    const [activeTab, setActiveTab] = useState<'code' | 'logs'>('code');
+
     const handleGenerate = async () => {
         setLoading(true);
+        setActiveTab('logs'); // Switch to logs view when starting generation
         try {
             const response = await fetch('http://localhost:8080/generate', {
                 method: 'POST',
@@ -26,6 +29,7 @@ const App = () => {
             const data: GenerationResult = await response.json();
             setResult(data);
             setPrompt(''); // Clear prompt after send
+            setActiveTab('code'); // Switch back to code after success
         } catch (error) {
             console.error('Error:', error);
         } finally {
@@ -118,14 +122,24 @@ const App = () => {
                         </div>
                     </div>
 
-                    {/* Right Column: Code (7 columns) */}
+                    {/* Right Column: Viewer (7 columns) */}
                     <div className="lg:col-span-7 space-y-6">
                         <div className="flex items-center justify-between border-b border-gray-200">
                             <div className="flex items-center gap-6">
-                                <button className="text-sm font-bold text-gray-900 border-b-2 border-[#2563eb] pb-3 px-1">Source Code</button>
-                                <button className="text-sm font-bold text-gray-400 pb-3 px-1 hover:text-gray-600 transition-colors">Process Logs</button>
+                                <button
+                                    onClick={() => setActiveTab('code')}
+                                    className={`text-sm font-bold pb-3 px-1 transition-colors ${activeTab === 'code' ? 'text-gray-900 border-b-2 border-[#2563eb]' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Source Code
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('logs')}
+                                    className={`text-sm font-bold pb-3 px-1 transition-colors ${activeTab === 'logs' ? 'text-gray-900 border-b-2 border-[#2563eb]' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    Process Logs
+                                </button>
                             </div>
-                            {result?.code && (
+                            {result?.code && activeTab === 'code' && (
                                 <button
                                     onClick={handleExport}
                                     className="mb-2 text-xs font-bold text-[#2563eb] hover:text-[#1d4ed8] flex items-center gap-1.5 transition-colors"
@@ -145,36 +159,45 @@ const App = () => {
                                     <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
                                     <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
                                 </div>
-                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">angular-component.ts</span>
+                                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                    {activeTab === 'code' ? 'angular-component.ts' : 'agent-workflow.log'}
+                                </span>
                             </div>
 
-                            <div className="flex-1 overflow-auto p-6 bg-white">
-                                {result ? (
-                                    <pre className="font-mono text-[13px] leading-relaxed text-blue-900/80 antialiased whitespace-pre-wrap">
-                                        <code>{result.code}</code>
-                                    </pre>
-                                ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-300 select-none space-y-4">
-                                        <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
-                                            <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
+                            <div className={`flex-1 overflow-auto ${activeTab === 'logs' ? 'bg-gray-900 p-0' : 'bg-white p-6'}`}>
+                                {activeTab === 'code' ? (
+                                    result ? (
+                                        <pre className="font-mono text-[13px] leading-relaxed text-blue-900/80 antialiased whitespace-pre-wrap">
+                                            <code>{result.code}</code>
+                                        </pre>
+                                    ) : (
+                                        <div className="h-full flex flex-col items-center justify-center text-gray-300 select-none space-y-4">
+                                            <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                                                <svg className="w-8 h-8 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                            <p className="text-sm font-medium">Your generated code will appear here</p>
                                         </div>
-                                        <p className="text-sm font-medium">Your generated code will appear here</p>
+                                    )
+                                ) : (
+                                    <div className="p-6 font-mono text-[11px] h-full overflow-auto">
+                                        {result?.logs ? (
+                                            result.logs.map((log: string, i: number) => (
+                                                <div key={i} className="flex gap-3 mb-2 last:mb-0 border-l-2 border-gray-800 pl-3">
+                                                    <span className="text-gray-600 shrink-0 select-none">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                                                    <span className="text-blue-400 font-bold select-none whitespace-nowrap">AGENT →</span>
+                                                    <span className="text-gray-300">{log}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="h-full flex flex-col items-center justify-center text-gray-600 select-none">
+                                                <p>No activity logs found.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
-
-                            {result?.logs && (
-                                <div className="p-4 bg-gray-900 border-t border-gray-800 h-40 overflow-auto scrollbar-thin scrollbar-thumb-gray-700">
-                                    {result.logs.map((log: string, i: number) => (
-                                        <div key={i} className="text-[11px] font-mono text-gray-400 flex gap-3 mb-1.5 last:mb-0">
-                                            <span className="text-gray-600 shrink-0">{new Date().toLocaleTimeString([], { hour12: false })}</span>
-                                            <span className="text-gray-300">{log}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
