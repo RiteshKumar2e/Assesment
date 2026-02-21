@@ -239,7 +239,7 @@ const App = () => {
 
             {/* ── Header ── */}
             <header style={{ background: '#ffffff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
-                <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="header-inner" style={{ maxWidth: 1440, margin: '0 auto', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 34, height: 34, borderRadius: 10, background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -266,15 +266,15 @@ const App = () => {
                 </div>
             </header>
 
-            <main style={{ maxWidth: 1440, margin: '0 auto', padding: '40px 24px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
+            <main className="app-main" style={{ maxWidth: 1440, margin: '0 auto', padding: '40px 24px' }}>
+                <div className="app-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
 
                     {/* ── Left Panel ── */}
-                    <div className="left-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20, height: 760, overflowY: 'auto', paddingRight: 4 }}>
+                    <div className="left-panel" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', paddingRight: 4 }}>
 
                         {/* Hero text */}
                         <div>
-                            <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
+                            <h1 className="hero-title" style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.04em', color: '#0f172a', margin: 0, lineHeight: 1.1 }}>
                                 {result ? 'Refine your\ncomponent.' : 'Build Angular\ncomponents.'}
                             </h1>
                             <p style={{ marginTop: 10, fontSize: 14, color: '#64748b', lineHeight: 1.7 }}>
@@ -412,12 +412,16 @@ const App = () => {
                     </div>
 
                     {/* ── Right Panel ── */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    <div className="right-panel" style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
 
                         {/* Tab bar */}
                         <div style={{ background: '#ffffff', borderRadius: '16px 16px 0 0', borderTop: '1px solid #e2e8f0', borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', gap: 2 }}>
-                                {([['code', 'Source Code'], ['logs', 'Process Logs'], ['preview', 'Live Preview']] as const).map(([tab, label]) => (
+                                {([
+                                    ['code', 'Source Code', 'Code'],
+                                    ['logs', 'Process Logs', 'Logs'],
+                                    ['preview', 'Live Preview', 'Preview'],
+                                ] as const).map(([tab, fullLabel, shortLabel]) => (
                                     <button key={tab} onClick={() => setActiveTab(tab)}
                                         style={{
                                             padding: '14px 16px', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
@@ -427,7 +431,8 @@ const App = () => {
                                             borderBottom: activeTab === tab ? '2px solid #4f46e5' : '2px solid transparent',
                                             transition: 'all 0.12s ease'
                                         }}>
-                                        {label}
+                                        <span className="tab-label-full">{fullLabel}</span>
+                                        <span className="tab-label-short">{shortLabel}</span>
                                     </button>
                                 ))}
                             </div>
@@ -440,7 +445,7 @@ const App = () => {
                         </div>
 
                         {/* Window body */}
-                        <div style={{ background: activeTab === 'code' ? '#ffffff' : activeTab === 'logs' ? '#0f172a' : '#f1f5f9', border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 16px 16px', height: 600, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <div className="right-panel-body" style={{ background: activeTab === 'code' ? '#ffffff' : activeTab === 'logs' ? '#0f172a' : '#f1f5f9', border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 16px 16px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
                             {/* Traffic lights */}
                             <div style={{ padding: '10px 16px', borderBottom: `1px solid ${activeTab === 'logs' ? 'rgba(255,255,255,0.06)' : '#f1f5f9'}`, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -615,9 +620,55 @@ const App = () => {
                 * { box-sizing: border-box; }
                 textarea::placeholder { color: #94a3b8; }
                 textarea { outline: none; }
-                /* Hide scrollbar on left panel but keep it scrollable */
+
+                /* Left panel scrollbar hidden */
                 .left-panel::-webkit-scrollbar { display: none; }
-                .left-panel { scrollbar-width: none; -ms-overflow-style: none; }
+                .left-panel { scrollbar-width: none; -ms-overflow-style: none; height: 760px; }
+
+                /* Right panel (code/logs/preview window body) height */
+                .right-panel-body { height: 600px; }
+
+                /* ── Desktop (default) ── */
+                .app-main  { padding: 40px 24px; }
+                .app-grid  { grid-template-columns: 1fr 2fr; gap: 32px; }
+                .hero-title { font-size: 32px; }
+
+                /* ── Tablet  ≤ 1024px ── */
+                @media (max-width: 1024px) {
+                    .app-grid { grid-template-columns: 1fr 1.4fr; gap: 20px; }
+                    .left-panel { height: auto !important; }
+                    .right-panel-body { height: 520px; }
+                }
+
+                /* ── Mobile  ≤ 768px ── */
+                @media (max-width: 768px) {
+                    .app-main  { padding: 20px 14px; }
+                    .app-grid  {
+                        grid-template-columns: 1fr !important;
+                        gap: 20px;
+                    }
+                    .left-panel  { height: auto !important; max-height: none !important; }
+                    .right-panel { width: 100%; }
+                    .right-panel-body { height: 460px; }
+                    .hero-title { font-size: 24px !important; }
+                    .header-inner { padding: 0 14px !important; }
+                }
+
+                /* ── Small mobile  ≤ 480px ── */
+                @media (max-width: 480px) {
+                    .app-main { padding: 14px 10px; }
+                    .right-panel-body { height: 400px; }
+                    .hero-title { font-size: 20px !important; }
+                }
+
+                /* Tab labels: short on mobile, full on desktop */
+                .tab-label-short { display: none; }
+                .tab-label-full  { display: inline; }
+                @media (max-width: 480px) {
+                    .tab-label-full  { display: none; }
+                    .tab-label-short { display: inline; }
+                }
+
             `}</style>
         </div>
     );
