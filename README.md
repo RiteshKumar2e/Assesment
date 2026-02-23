@@ -1,41 +1,87 @@
-# Guided Component Architect
+    # 🚀 Guided Component Architect
 
-A sophisticated pipeline that transforms natural language descriptions into valid, styled Angular components while adhering to a strict design system.
+A high-performance "Generator-Validator-Corrector" pipeline that transforms natural language descriptions into production-ready, styled **Angular 17+** components. 
 
-## 🚀 Architectural Choice: Groq Powered Agentic Loops
-To ensure a high-performance developer experience, this system utilizes **Groq's LPU™ Inference Engine**. We selected Groq specifically for its **ultra-low-latency generation**, which allows our "Generator-Validator-Corrector" loops to run near-instantaneously. This architecture enables multiple self-correction cycles without taxing the user's focus, making complex UI generation feel fluid.
+The system utilizes an agentic loop powered by **Groq's LPU™ Inference Engine** for ultra-low latency self-correction cycles.
 
-## Agentic Loop Architecture
+## 🔗 Live Demo
+- **Frontend (Dashboard):** [https://assesment-flame.vercel.app/](https://assesment-flame.vercel.app/)
+- **Backend (API):** [https://assesment-ai4k.onrender.com](https://assesment-ai4k.onrender.com)
 
-The system implements a classic "Generator-Validator-Corrector" agentic pattern with strict reinforcement:
+---
 
-1.  **Input**: Natural language prompt + `design-system.json` tokens.
-2.  **Generator Agent**: Uses a low-temperature (0.2) model with strict system instructions to produce raw Angular source code.
-3.  **Linter-Agent (Validator)**: 
-    *   **Syntax Check**: Validates basic TypeScript/Angular structure.
+## 🏗️ Architecture: The Agentic Loop
+
+The system implements a classic 3-step agentic pattern with strict reinforcement:
+
+1.  **Generator Agent (LLM)**: Uses a low-temperature (0.2) model to produce raw Angular source code based on user prompts and `design-system.json` tokens.
+2.  **Linter-Agent (Validator)**: 
+    *   **Syntax Check**: Validates TypeScript/Angular structure.
     *   **Design Token Compliance**: Ensures zero-hardcoded colors; only allowed design system values are permitted.
-4.  **Self-Correction (The Loop)**: On failure, the specific error logs are fed back to the Generator for up to 2 remedial iterations.
-5.  **Clean Output**: Implements custom regex stripping to ensure raw code delivery (zero conversational text).
+3.  **Self-Correction Loop**: On failure, specific error logs are fed back to a Repair Agent. The loop continues for up to 2 remedial iterations until the code passes all linter checks.
 
-## Structure
+---
 
--   `backend/`: Python FastAPI application managing the agentic logic and Groq integration.
--   `frontend/`: React-based architect dashboard with live visual mapping.
--   `design-system.json`: The source of truth for design tokens.
+## 🛠️ Tech Stack
 
-## Setup & Running
+- **Frontend**: React (Vite) + Tailwind CSS + Lucide Icons
+- **Backend**: FastAPI + Python (Asynchronous model cascade)
+- **AI Engine**: Groq (Llama-3 models)
+- **Design Governance**: Centralized `design-system.json`
 
-### Requirements
-- Python 3.9+
+---
+
+## 📂 Project Structure
+
+- `backend/`: Python FastAPI application managing the agentic logic and Groq integration.
+- `frontend/`: React-based architect dashboard with live visual mapping and log streaming.
+- `design-system.json`: The source of truth for design tokens (Primary color, border-radius, fonts).
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
 - Node.js 18+
-- Groq API Key (Set as `GROQ_API_KEY` in `.env`)
+- Python 3.9+
+- Groq API Key (Set as `GROQ_API_KEY` in `backend/.env`)
 
-### Execution
+### Local Development
+
+#### 1. Backend Setup
 ```bash
-# Backend
-cd backend && pip install -r requirements.txt
+cd backend
+pip install -r requirements.txt
 python main.py
-
-# Frontend
-cd frontend && npm install && npm start
 ```
+*API will run at `http://localhost:8080`*
+
+#### 2. Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*Dashboard will run at `http://localhost:5173`*
+
+---
+
+## 🚢 Deployment
+
+### Frontend (Vercel)
+The frontend is configured for Vercel. Ensure the `VITE_API_URL` (if used) or the fetch URL in `App.tsx` points to the production backend.
+
+### Backend (Render/Railway)
+The backend is optimized for Render.
+- **Root Directory**: `backend`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `python main.py` or `uvicorn main:app --host 0.0.0.0 --port 10000`
+
+---
+
+## 📜 Design Rules (design-system.json)
+The system strictly enforces:
+- **Primary Color**: `#6366f1` (Indigo 600)
+- **Border Radius**: `8px` (rounded-lg)
+- **Typography**: Inter
+- **Transparency**: Glassmorphism background tokens
