@@ -18,14 +18,32 @@ app = FastAPI(title="Guided Component Architect API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://assesment-flame.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000"
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-with open(os.path.join(BASE_DIR, "design-system.json")) as f:
-    design_system = json.load(f)
+# Robustly find design-system.json (current dir or parent dir)
+ds_path = "design-system.json"
+if not os.path.exists(ds_path):
+    ds_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "design-system.json")
+if not os.path.exists(ds_path):
+    ds_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "design-system.json")
+
+try:
+    with open(ds_path) as f:
+        design_system = json.load(f)
+except FileNotFoundError:
+    # Fallback to a minimal design system if file is missing
+    design_system = {
+        "version": "3.0.0",
+        "tokens": {"colors": {"primary": "#6366f1", "glassBg": "rgba(255,255,255,0.1)"}},
+        "rules": []
+    }
 
 generator = GeneratorAgent(design_system)
 validator  = ValidatorAgent(design_system)

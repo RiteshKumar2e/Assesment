@@ -196,7 +196,7 @@ const App = () => {
         setLoading(true);
         setActiveTab('logs');
         try {
-            const res = await fetch('http://localhost:8080/generate', {
+            const res = await fetch('https://assesment-ai4k.onrender.com/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, prev_code: result?.code }),
