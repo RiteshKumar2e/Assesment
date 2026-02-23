@@ -101,11 +101,11 @@ async def generate_component(request: GenerationRequest):
             elapsed = round(time.time() - t_start, 2)
             logs.append(f'[GROQ]      Response received — {len(current_code):,} chars ({elapsed}s)')
 
-        except RuntimeError as e:
-            logs.append(f'[ERROR]     Groq API unreachable — {e}')
-            logs.append(f'[ERROR]     Verify GROQ_API_KEY in backend/.env')
+        except (RuntimeError, ValueError) as e:
+            error_type = "PROMPT INJECTION" if isinstance(e, ValueError) else "API ERROR"
+            logs.append(f'[ERROR]     {error_type} — {e}')
             return GenerationResponse(
-                code=f"// GROQ API ERROR\n// {e}",
+                code=f"// {error_type}\n// {e}",
                 iterations=attempt + 1,
                 logs=logs,
                 success=False,

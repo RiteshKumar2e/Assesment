@@ -218,14 +218,44 @@ class GeneratorAgent:
         self.design_system = design_system
         self.api_key: Optional[str] = os.getenv("GROQ_API_KEY")
 
+    # ── Security & Sanitization ───────────────────────────────────────────────
+
+    def _sanitize_input(self, text: str) -> str:
+        """
+        Detects and neutralizes potential prompt injection attempts.
+        """
+        # Block common injection triggers
+        forbidden_patterns = [
+            r"(?i)ignore\s+(all\s+)?previous\s+instructions",
+            r"(?i)bypass\s+governance",
+            r"(?i)system\s+override",
+            r"(?i)disregard\s+the\s+prompt",
+            r"(?i)you\s+are\s+now\s+a",
+            r"(?i)new\s+role",
+            r"(?i)instruction\s+update",
+        ]
+        
+        for pattern in forbidden_patterns:
+            if re.search(pattern, text):
+                # Instead of erroring, we can neutralize it by wrapping it in quote or 
+                # just replacing the offending part. For code generation, we'll be strict.
+                raise ValueError("Potential prompt injection detected in user input.")
+        
+        # Strip any existing XML-like tags that might clash with our delimiters
+        text = re.sub(r'<(/)?user_request>', '[REDACTED]', text)
+        return text.strip()
+
     # ── Prompt builders (per master prompt pack templates) ────────────────────
 
     def _generation_user_prompt(self, user_input: str) -> str:
-        """Runtime user prompt — injects the request into the master prompt template."""
+        """Runtime user prompt — uses delimiters to isolate user input."""
+        sanitized_input = self._sanitize_input(user_input)
         return (
-            f"Generate an Angular standalone component for the following request:\n\n"
-            f"{user_input}\n\n"
-            f"REMINDER — your output must:\n"
+            f"You will generate an Angular standalone component based on the request inside the <user_request> tags.\n\n"
+            f"<user_request>\n"
+            f"{sanitized_input}\n"
+            f"</user_request>\n\n"
+            f"REMINDER — your output must strictly follow the system instructions and:\n"
             f"  1. Start immediately with `import` (no preamble)\n"
             f"  2. Contain @Component with standalone: true and an inline backtick template\n"
             f"  3. Use bg-indigo-600 / text-indigo-600 for the primary color #6366f1\n"
@@ -236,16 +266,24 @@ class GeneratorAgent:
         )
 
     def _repair_user_prompt(self, user_input: str, bad_code: str, errors: List[str]) -> str:
-        """Repair Agent user message — exact template from master prompt pack."""
+        """Repair Agent user message — uses delimiters for isolation."""
+        sanitized_request = self._sanitize_input(user_input)
         error_block = "\n".join(f"  [{i+1}] {e}" for i, e in enumerate(errors))
         return (
             f"The previously generated Angular component failed deterministic validation.\n\n"
-            f"Original user request:\n  {user_input}\n\n"
-            f"Validation errors:\n{error_block}\n\n"
-            f"Previous (broken) code:\n{bad_code}\n\n"
-            f"Produce a fully corrected version.\n"
-            f"Output must start immediately with `import` — no preamble, no markdown fences.\n"
-            f"Fix every listed error. Ensure all design tokens are present in the output."
+            f"Original user request inside <user_request>:\n"
+            f"<user_request>\n"
+            f"{sanitized_request}\n"
+            f"</user_request>\n\n"
+            f"Validation errors detected by the Linter-Agent:\n"
+            f"{error_block}\n\n"
+            f"Previous (broken) code for reference:\n"
+            f"--- START BROKEN CODE ---\n"
+            f"{bad_code}\n"
+            f"--- END BROKEN CODE ---\n\n"
+            f"Produce a fully corrected version. Fix every listed error.\n"
+            f"Ensure all design tokens are present in the final output.\n"
+            f"Output must start immediately with `import` — no preamble, no markdown fences."
         )
 
 
