@@ -62,6 +62,38 @@ class GenerationResponse(BaseModel):
     model: Optional[str] = None
 
 
+# ─── History Logging Utility (JSON Lines for parsing) ─────────────────────────
+HISTORY_FILE = "history.jsonl"
+
+def log_to_history(prompt: str, success: bool, model: str):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    entry = {
+        "timestamp": timestamp,
+        "status": "SUCCESS" if success else "FAILED",
+        "model": model,
+        "prompt": prompt
+    }
+    with open(HISTORY_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry) + "\n")
+
+@app.get("/history")
+async def get_history():
+    if not os.path.exists(HISTORY_FILE):
+        return []
+    history = []
+    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                history.append(json.loads(line))
+    # Return last 10 items in reverse order
+    return history[::-1][:10]
+
+@app.post("/history/clear")
+async def clear_history():
+    if os.path.exists(HISTORY_FILE):
+        os.remove(HISTORY_FILE)
+    return {"status": "cleared"}
+
 @app.post("/generate", response_model=GenerationResponse)
 async def generate_component(request: GenerationRequest):
     current_code = ""
@@ -125,6 +157,7 @@ async def generate_component(request: GenerationRequest):
             logs.append(f'[LINT]      All checks passed — 0 violations')
             logs.append(f'[OK]        Component is valid and design-system compliant')
             logs.append(f'[OUTPUT]    Completed in {attempt + 1} iteration(s) · {elapsed}s total')
+            log_to_history(request.prompt, True, used_model)
             return GenerationResponse(
                 code=current_code,
                 iterations=attempt + 1,
@@ -143,6 +176,7 @@ async def generate_component(request: GenerationRequest):
 
     elapsed = round(time.time() - t_start, 2)
     logs.append(f'[WARN]      Max retries ({MAX_RETRIES}) reached — returning best available output ({elapsed}s)')
+    log_to_history(request.prompt, False, used_model)
     return GenerationResponse(
         code=current_code,
         iterations=MAX_RETRIES + 1,
