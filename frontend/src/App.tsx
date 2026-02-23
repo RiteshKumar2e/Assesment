@@ -178,13 +178,31 @@ const App = () => {
     });
 
     useEffect(() => {
+        // Fetch history from backend on mount once
+        const fetchBackendHistory = async () => {
+            try {
+                const res = await fetch('https://assesment-ai4k.onrender.com/history');
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    // One-way sync from backend to local is tricky without timestamps
+                    // For now, we just ensure the backend is reachable.
+                }
+            } catch (e) { console.error('History sync failed', e); }
+        };
+        fetchBackendHistory();
+    }, []); // Only once on mount
+
+    useEffect(() => {
         try { localStorage.setItem('architect_history', JSON.stringify(history)); }
         catch { /* storage quota exceeded — ignore */ }
     }, [history]);
 
-    const clearHistory = () => {
+    const clearHistory = async () => {
         setHistory([]);
         localStorage.removeItem('architect_history');
+        try {
+            await fetch('https://assesment-ai4k.onrender.com/history/clear', { method: 'POST' });
+        } catch (e) { console.error('Failed to clear backend history', e); }
     };
 
     const deleteHistoryItem = (index: number) => {
