@@ -98,6 +98,3 @@ The system strictly enforces:
 
 ---
 
-## 📖 Workflows
-Internal engineering documents are available in `.agent/workflows/`:
-- `prompt_injection_prevention.md`: Detailed strategy for securing the LLM pipeline.
