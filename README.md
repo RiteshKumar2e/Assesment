@@ -5,8 +5,7 @@ A high-performance "Generator-Validator-Corrector" pipeline that transforms natu
 The system utilizes an agentic loop powered by **Groq's LPU™ Inference Engine** for ultra-low latency self-correction cycles.
 
 ## 🔗 Live Demo
-- **Frontend (Dashboard):** [https://assesment-flame.vercel.app/](https://assesment-flame.vercel.app/)
-- **Backend (API):** [https://assesment-ai4k.onrender.com](https://assesment-ai4k.onrender.com)
+- **Live:** [https://assesment-flame.vercel.app/](https://assesment-flame.vercel.app/)
 
 ---
 
@@ -79,9 +78,26 @@ The backend is optimized for Render.
 
 ---
 
+## 🛡️ Security & Governance
+
+The pipeline includes a multi-layered defense system against **Prompt Injection**:
+
+1.  **Sanitization Agent**: Scans inputs for malicious keywords (e.g., "ignore previous instructions").
+2.  **Structural Delimiters**: Isolates user requests within `<user_request>` tags to prevent instruction hijacking.
+3.  **Instruction Anchoring**: Critical rules are re-emphasized *after* user input to leverage model recency bias.
+4.  **Deterministic Validation**: The Linter-Agent acts as a final guard, rejecting any output that doesn't conform to strict Angular/Design System rules.
+
+---
+
 ## 📜 Design Rules (design-system.json)
 The system strictly enforces:
 - **Primary Color**: `#6366f1` (Indigo 600)
 - **Border Radius**: `8px` (rounded-lg)
 - **Typography**: Inter
 - **Transparency**: Glassmorphism background tokens
+
+---
+
+## 📖 Workflows
+Internal engineering documents are available in `.agent/workflows/`:
+- `prompt_injection_prevention.md`: Detailed strategy for securing the LLM pipeline.
